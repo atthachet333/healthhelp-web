@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPERVISOR
+  STAFF
+  VIEWER
+}
+
+enum Channel {
+  LINE
+  WEB
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_INFO
+  RESOLVED
+  CLOSED
+}
+
+enum ActionType {
+  COMMENT
+  STATUS_CHANGE
+  ASSIGN
+  PRIORITY_CHANGE
+  SYSTEM
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  fullName      String   @map("full_name")
+  role          Role     @default(STAFF)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  assignedCases Case[]       @relation("AssignedCases")
+  caseUpdates   CaseUpdate[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Reporter {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  email     String?
+  lineId    String?  @map("line_id")
+  fullName  String   @map("full_name")
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cases Case[]
+
+  @@index([email])
+  @@index([lineId])
+  @@map("reporters")
+}
+
+model Category {
+  id              String   @id @default(cuid())
+  name            String
+  defaultPriority Priority @default(MEDIUM) @map("default_priority")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  cases    Case[]
+  slaRules SLARule[]
+
+  @@map("categories")
+}
+
+model Case {
+  id             String     @id @default(cuid())
+  caseNo         String     @unique @map("case_no")
+  reporterId     String     @map("reporter_id")
+  categoryId     String     @map("category_id")
+  assigneeId     String?    @map("assignee_id")
+  channel        Channel    @default(WEB)
+  problemSummary String     @map("problem_summary")
+  description    String
+  priority       Priority   @default(MEDIUM)
+  status         CaseStatus @default(OPEN)
+  trackingCode   String     @unique @map("tracking_code")
+  slaDueAt       DateTime?  @map("sla_due_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  resolvedAt     DateTime?  @map("resolved_at")
+  closedAt       DateTime?  @map("closed_at")
+
+  reporter   Reporter     @relation(fields: [reporterId], references: [id])
+  category   Category     @relation(fields: [categoryId], references: [id])
+  assignee   User?        @relation("AssignedCases", fields: [assigneeId], references: [id])
+  updates    CaseUpdate[]
+  csatRating CSATRating?
+
+  @@index([status])
+  @@index([priority])
+  @@index([assigneeId])
+  @@index([createdAt])
+  @@map("cases")
+}
+
+model CaseUpdate {
+  id         String     @id @default(cuid())
+  caseId     String     @map("case_id")
+  userId     String?    @map("user_id")
+  actionType ActionType @map("action_type")
+  oldValue   String?    @map("old_value")
+  newValue   String?    @map("new_value")
+  note       String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  case        Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id])
+  attachments Attachment[]
+
+  @@index([caseId])
+  @@map("case_updates")
+}
+
+model Attachment {
+  id           String @id @default(cuid())
+  caseUpdateId String @map("case_update_id")
+  fileUrl      String @map("file_url")
+  fileName     String @map("file_name")
+  fileType     String @map("file_type")
+  fileSize     Int    @default(0) @map("file_size")
+
+  caseUpdate CaseUpdate @relation(fields: [caseUpdateId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model CSATRating {
+  id        String   @id @default(cuid())
+  caseId    String   @unique @map("case_id")
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("csat_ratings")
+}
+
+model SLARule {
+  id                 String   @id @default(cuid())
+  priority           Priority
+  categoryId         String?  @map("category_id")
+  resolveWithinHours Int      @map("resolve_within_hours")
+  notifyBeforeHours  Int      @default(2) @map("notify_before_hours")
+
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@unique([priority, categoryId])
+  @@map("sla_rules")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  action     String
+  resource   String
+  resourceId String   @map("resource_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([resource, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
