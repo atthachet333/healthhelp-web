@@ -6,7 +6,8 @@ export default async function CasesPage(props: {
 }) {
     const searchParams = await props.searchParams;
     const page = parseInt(searchParams.page || "1");
-    const status = searchParams.status || "ALL";
+    // Default to hiding resolved/closed cases
+    const status = searchParams.status || "HIDE_DONE";
     const priority = searchParams.priority || "ALL";
     const search = searchParams.search || "";
 

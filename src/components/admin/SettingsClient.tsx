@@ -39,6 +39,7 @@ export function SettingsClient({
         const stored = localStorage.getItem("healthhelp_user");
         if (stored) {
             try {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setCurrentUserId(JSON.parse(stored).id);
             } catch { }
         }
@@ -194,6 +195,7 @@ function SLARuleRow({
     onSave,
 }: {
     rule: { id: string; priority: string; resolveWithinHours: number; notifyBeforeHours: number };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSave: (rule: any, hours: number, notify: number) => void;
 }) {
     const [hours, setHours] = useState(rule.resolveWithinHours);

@@ -20,55 +20,55 @@ async function main() {
 
     const admin = await prisma.user.upsert({
         where: { email: "admin@healthhelp.com" },
-        update: {},
+        update: { passwordHash: defaultPassword, role: Role.ADMIN },
         create: {
             email: "admin@healthhelp.com",
             passwordHash: defaultPassword,
-            fullName: "สมชาย ผู้ดูแลระบบ (Admin)",
+            fullName: "ผู้ดูแลระบบ (Admin)",
             role: Role.ADMIN,
         },
     });
 
     const supervisor = await prisma.user.upsert({
         where: { email: "supervisor@healthhelp.com" },
-        update: {},
+        update: { passwordHash: defaultPassword, role: Role.SUPERVISOR },
         create: {
             email: "supervisor@healthhelp.com",
             passwordHash: defaultPassword,
-            fullName: "สมหญิง หัวหน้างาน (Supervisor)",
+            fullName: "หัวหน้างาน (Supervisor)",
             role: Role.SUPERVISOR,
         },
     });
 
     const staff1 = await prisma.user.upsert({
         where: { email: "staff@healthhelp.com" },
-        update: {},
+        update: { passwordHash: defaultPassword, role: Role.STAFF },
         create: {
             email: "staff@healthhelp.com",
             passwordHash: defaultPassword,
-            fullName: "วิชัย เจ้าหน้าที่ (Staff)",
+            fullName: "เจ้าหน้าที่ (Staff)",
             role: Role.STAFF,
         },
     });
 
     const staff2 = await prisma.user.upsert({
         where: { email: "staff2@healthhelp.com" },
-        update: {},
+        update: { passwordHash: defaultPassword, role: Role.STAFF },
         create: {
             email: "staff2@healthhelp.com",
             passwordHash: defaultPassword,
-            fullName: "นันทา ช่วยเหลือ (Staff 2)",
+            fullName: "เจ้าหน้าที่ 2 (Staff 2)",
             role: Role.STAFF,
         },
     });
 
-    const viewer = await prisma.user.upsert({
+    await prisma.user.upsert({
         where: { email: "viewer@healthhelp.com" },
-        update: {},
+        update: { passwordHash: defaultPassword, role: Role.VIEWER },
         create: {
             email: "viewer@healthhelp.com",
             passwordHash: defaultPassword,
-            fullName: "ดูอย่างเดียว ผู้ชม (Viewer)",
+            fullName: "ผู้ชม (Viewer)",
             role: Role.VIEWER,
         },
     });

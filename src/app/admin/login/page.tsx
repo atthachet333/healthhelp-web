@@ -35,9 +35,9 @@ export default function AdminLoginPage() {
     return (
         <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
             {/* Background Effects */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900" />
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600 rounded-full filter blur-[128px] opacity-20" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600 rounded-full filter blur-[128px] opacity-20" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0b1121] via-[#111a2e] to-[#0b1121]" />
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600 rounded-full filter blur-[128px] opacity-15" />
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600 rounded-full filter blur-[128px] opacity-15" />
 
             <div className="relative w-full max-w-lg">
                 {/* Back to Home Button */}
@@ -51,15 +51,15 @@ export default function AdminLoginPage() {
 
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 glow">
-                        <HeartPulse className="w-8 h-8 text-white" />
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/25">
+                        <HeartPulse className="w-7 h-7 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-1">HealthHelp</h1>
-                    <p className="text-slate-400">ระบบจัดการเคส • เข้าสู่ระบบเจ้าหน้าที่</p>
+                    <h1 className="text-2xl font-bold text-white mb-1">HealthHelp</h1>
+                    <p className="text-slate-400 text-sm">ระบบจัดการเคส • เข้าสู่ระบบเจ้าหน้าที่</p>
                 </div>
 
                 {/* Login Card */}
-                <div className="glass rounded-2xl p-10 md:p-12">
+                <div className="bg-[#111a2e]/90 backdrop-blur-xl border border-[#1e2d4a] rounded-2xl p-8 md:p-10 shadow-xl shadow-black/20">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-1.5">
@@ -124,10 +124,18 @@ export default function AdminLoginPage() {
                                     type="button"
                                     onClick={() => {
                                         const form = document.querySelector("form") as HTMLFormElement;
+                                        if (!form) return;
                                         const emailInput = form.querySelector('input[name="email"]') as HTMLInputElement;
                                         const passInput = form.querySelector('input[name="password"]') as HTMLInputElement;
-                                        emailInput.value = cred.email;
-                                        passInput.value = cred.pass;
+
+                                        // Set values natively to ensure they are picked up
+                                        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                                        nativeInputValueSetter?.call(emailInput, cred.email);
+                                        const event = new Event('input', { bubbles: true });
+                                        emailInput.dispatchEvent(event);
+
+                                        nativeInputValueSetter?.call(passInput, cred.pass);
+                                        passInput.dispatchEvent(event);
                                     }}
                                     className="px-5 py-2.5 rounded-full bg-slate-800/50 hover:bg-slate-700/80 text-slate-300 hover:text-white transition-all border border-slate-700/50 hover:border-slate-500 hover:shadow-md"
                                 >

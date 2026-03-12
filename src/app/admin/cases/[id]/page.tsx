@@ -15,5 +15,6 @@ export default async function CaseDetailPage(props: {
         notFound();
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return <CaseDetailClient caseData={caseData as any} staffUsers={staffUsers} />;
 }

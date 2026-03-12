@@ -3,9 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 
 enum Role {
   ADMIN
@@ -107,6 +108,9 @@ model Case {
   resolvedAt     DateTime?  @map("resolved_at")
   closedAt       DateTime?  @map("closed_at")
 
+  hospitalId     String?    @map("hospital_id")
+  hospital       Hospital?  @relation(fields: [hospitalId], references: [id])
+
   reporter   Reporter     @relation(fields: [reporterId], references: [id])
   category   Category     @relation(fields: [categoryId], references: [id])
   assignee   User?        @relation("AssignedCases", fields: [assigneeId], references: [id])
@@ -128,6 +132,7 @@ model CaseUpdate {
   oldValue   String?    @map("old_value")
   newValue   String?    @map("new_value")
   note       String?
+  isPublic   Boolean    @default(true) @map("is_public") // For admin recommendation vs internal note
   createdAt  DateTime   @default(now()) @map("created_at")
 
   case        Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -190,4 +195,38 @@ model AuditLog {
   @@index([resource, resourceId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Hospital {
+  id             String  @id @default(cuid())
+  code           String  @unique  // รหัส 9 หลัก
+  name           String           // ชื่อหน่วยงาน
+  orgType        String? @map("org_type")    // ประเภทองค์กร
+  unitType       String? @map("unit_type")   // ประเภทหน่วยงาน
+  affiliation    String?          // สังกัด
+  department     String?          // กรม/ฝ่าย/สำนัก
+  level          String?          // ระดับบริการ
+  actualBeds     Int?    @map("actual_beds") // จำนวนเตียง
+  zone           String?          // เขตพื้นที่
+  healthRegionId String? @map("health_region_id") // เขตสุขภาพที่
+  address        String?          // ที่ตั้ง
+  moo            String?          // หมู่ที่
+  subdistrict    String?          // ตำบล
+  district       String?          // อำเภอ
+  province       String?          // จังหวัด
+  zipcode        String?          // รหัสไปรษณีย์
+  foundedDate    String? @map("founded_date")  // วันที่เปิดใช่งาน/วันก่อตั้ง
+  closedDate     String? @map("closed_date")   // วันที่ปิด/ยกเลิก
+  lastUpdate     String? @map("last_update")   // วันที่ปรับปรุงข้อมูลล่าสุด
+
+  cases          Case[]
+
+  @@map("hospitals")
+}
+
+model DailySequence {
+  date      String @id // YYYY-MM-DD
+  lastCount Int    @default(0)
+
+  @@map("daily_sequences")
 }

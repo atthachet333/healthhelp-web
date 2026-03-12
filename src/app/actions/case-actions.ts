@@ -2,8 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { createCaseSchema, type CreateCaseInput, csatSchema, type CSATInput } from "@/lib/validations";
-import { generateCaseNo, generateTrackingCode } from "@/lib/utils";
+import { generateTrackingCode, getPriorityLabel, getStatusLabel, formatDateForCaseNo } from "@/lib/utils";
 import { sendLineNotify } from "@/lib/line-notify";
+import { appendToSheet, updateSheetCaseStatus, SHEET_COLUMNS } from "@/lib/google-sheets";
 import { CaseStatus, ActionType, Channel } from "@prisma/client";
 
 export async function createCase(input: CreateCaseInput) {
@@ -51,6 +52,11 @@ export async function createCase(input: CreateCaseInput) {
         const category = await prisma.category.findUnique({ where: { id: data.categoryId } });
         const priority = category?.defaultPriority || "MEDIUM";
 
+        // Get hospital name and code for Google Sheets
+        const hospital = data.hospitalId
+            ? await prisma.hospital.findUnique({ where: { id: data.hospitalId }, select: { name: true, code: true } })
+            : null;
+
         // Calculate SLA due
         const slaRule = await prisma.sLARule.findFirst({ where: { priority } });
         const slaDueAt = slaRule
@@ -58,13 +64,25 @@ export async function createCase(input: CreateCaseInput) {
             : null;
 
         // Generate unique identifiers
-        let caseNo = generateCaseNo();
-        let trackingCode = generateTrackingCode();
+        const dateStr = formatDateForCaseNo(); // DD-MM-YY
+        const dbDateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD for DailySequence key
 
-        // Ensure uniqueness
-        while (await prisma.case.findUnique({ where: { caseNo } })) {
-            caseNo = generateCaseNo();
-        }
+        // Use Prisma transaction to ensure atomic increment of the daily sequence
+        const sequence = await prisma.$transaction(async (tx: any) => {
+            const seq = await tx.dailySequence.upsert({
+                where: { date: dbDateStr },
+                update: { lastCount: { increment: 1 } },
+                create: { date: dbDateStr, lastCount: 1 },
+            });
+            return seq.lastCount;
+        });
+
+        // Format: HH-DD-MM-YY-0-00001
+        // We ensure sequence is padded with 5 zeros (e.g., 00001, 00002)
+        const seqNumStr = String(sequence).padStart(5, '0');
+        const caseNo = `HH-${dateStr}-0-${seqNumStr}`;
+
+        let trackingCode = generateTrackingCode();
         while (await prisma.case.findUnique({ where: { trackingCode } })) {
             trackingCode = generateTrackingCode();
         }
@@ -75,6 +93,7 @@ export async function createCase(input: CreateCaseInput) {
                 caseNo,
                 reporterId: reporter.id,
                 categoryId: data.categoryId,
+                hospitalId: data.hospitalId || null,
                 channel: Channel.WEB,
                 problemSummary: data.problemSummary,
                 description: data.description || "",
@@ -107,6 +126,32 @@ export async function createCase(input: CreateCaseInput) {
         // Send LINE Notify
         const lineMsg = `🚨มีเคสใหม่เข้าสู่ระบบ!🚨\nเลขที่: ${caseNo}\nหัวข้อ: ${data.problemSummary}\nความเร่งด่วน: ${priority}\nผู้แจ้ง: ${data.fullName}\nตรวจสอบได้ที่ระบบ HealthHelp`;
         await sendLineNotify(lineMsg);
+
+        // Build the row matching SHEET_COLUMNS order exactly:
+        // [DATE, CASE_NO, TRACKING, NAME, PHONE, EMAIL, LINE_ID, CATEGORY, PRIORITY, STATUS, SUBJECT, DETAIL, ASSIGNEE, HOSPITAL, HOSP_CODE]
+        const sheetData = [
+            newCase.createdAt,                 // [0] DATE      → A
+            caseNo,                            // [1] CASE_NO   → B
+            trackingCode,                      // [2] TRACKING  → C  ← used by updateSheetCaseStatus
+            data.fullName,                     // [3] NAME      → D
+            data.phone,                        // [4] PHONE     → E
+            data.email || "-",                 // [5] EMAIL     → F
+            data.lineId || "-",                // [6] LINE_ID   → G
+            category?.name || "ไม่ระบุ",        // [7] CATEGORY  → H ← conditional formatting
+            getPriorityLabel(priority),        // [8] PRIORITY  → I
+            getStatusLabel("OPEN"),            // [9] STATUS    → J ← updated by updateSheetCaseStatus
+            data.problemSummary,               // [10] SUBJECT  → K
+            data.description || "",            // [11] DETAIL   → L
+            "",                                // [12] ASSIGNEE → M (empty at creation)
+            hospital?.name || "",              // [13] HOSPITAL → N
+            hospital?.code || "",              // [14] HOSP_CODE → O ← รหัส 9 หลัก
+        ];
+        // Sanity check: array length must equal number of SHEET_COLUMNS entries
+        console.assert(sheetData.length === Object.keys(SHEET_COLUMNS).length,
+            `[Sheet] sheetData has ${sheetData.length} cols but SHEET_COLUMNS defines ${Object.keys(SHEET_COLUMNS).length}`);
+
+        // Use setImmediate or just don't await so the user gets the success response instantly
+        appendToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
 
         return { success: true, trackingCode, caseNo };
     } catch (error) {
@@ -198,6 +243,9 @@ export async function submitCSAT(trackingCode: string, input: CSATInput) {
             }
         });
 
+        // Sync Status to Google Sheets
+        updateSheetCaseStatus(trackingCode, getStatusLabel("CLOSED")).catch(e => console.error("Sheet Sync Error:", e));
+
         // Record CaseUpdate for user confirmation
         await prisma.caseUpdate.create({
             data: {
@@ -225,4 +273,28 @@ export async function getCategories() {
         where: { active: true },
         orderBy: { name: "asc" },
     });
+}
+
+export async function addPublicCaseUpdate(trackingCode: string, note: string) {
+    try {
+        const caseData = await prisma.case.findUnique({ where: { trackingCode } });
+        if (!caseData) return { success: false, error: "ไม่พบเคส" };
+
+        await prisma.caseUpdate.create({
+            data: {
+                caseId: caseData.id,
+                actionType: ActionType.COMMENT,
+                note: note,
+            }
+        });
+
+        // Notify admins if user replies
+        const lineMsg = `💬 ผู้แจ้งตอบกลับเคส!\nเลขที่: ${caseData.caseNo}\nข้อความ: ${note}\nตรวจสอบได้ที่ระบบ HealthHelp`;
+        await sendLineNotify(lineMsg);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error adding public update:", error);
+        return { success: false, error: "เกิดข้อผิดพลาด" };
+    }
 }

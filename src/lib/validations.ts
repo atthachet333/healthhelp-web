@@ -10,6 +10,7 @@ export const createCaseSchema = z.object({
     email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง").optional().or(z.literal("")),
     lineId: z.string().optional().or(z.literal("")),
     address: z.string().optional().or(z.literal("")),
+    hospitalId: z.string().optional().or(z.literal("")),
     categoryId: z.string().min(1, "กรุณาเลือกประเภทปัญหา"),
     problemSummary: z
         .string()

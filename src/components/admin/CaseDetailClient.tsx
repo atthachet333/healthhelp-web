@@ -17,6 +17,7 @@ import {
     Phone,
     Mail,
     MapPin,
+    Lock,
 } from "lucide-react";
 import {
     getStatusLabel,
@@ -79,32 +80,37 @@ export function CaseDetailClient({
     staffUsers: StaffUser[];
 }) {
     const router = useRouter();
-    const [note, setNote] = useState("");
+    const [internalNote, setInternalNote] = useState("");
+    const [publicNote, setPublicNote] = useState("");
     const [newStatus, setNewStatus] = useState("");
-    const [submitting, setSubmitting] = useState(false);
+    const [submittingInternal, setSubmittingInternal] = useState(false);
+    const [submittingPublic, setSubmittingPublic] = useState(false);
     const [showAssign, setShowAssign] = useState(false);
-    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
-    useEffect(() => {
-        const stored = localStorage.getItem("healthhelp_user");
-        if (stored) {
-            try {
-                setCurrentUserRole(JSON.parse(stored).role);
-            } catch { }
-        }
-    }, []);
-
+    const currentUserRole = typeof window !== "undefined"
+        ? JSON.parse(localStorage.getItem("healthhelp_user") || "{}").role
+        : null;
     const isViewer = currentUserRole === "VIEWER";
     const canAssign = currentUserRole === "ADMIN" || currentUserRole === "SUPERVISOR";
 
-    async function handleSubmitUpdate() {
-        if (!note.trim()) return;
-        setSubmitting(true);
+    async function handleSubmitInternal() {
+        if (!internalNote.trim() && !newStatus) return;
+        setSubmittingInternal(true);
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
-        await addCaseUpdate(caseData.id, user.id, note, newStatus || undefined);
-        setNote("");
+        await addCaseUpdate(caseData.id, user.id, internalNote, newStatus || undefined, false);
+        setInternalNote("");
         setNewStatus("");
-        setSubmitting(false);
+        setSubmittingInternal(false);
+        router.refresh();
+    }
+
+    async function handleSubmitPublic() {
+        if (!publicNote.trim()) return;
+        setSubmittingPublic(true);
+        const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
+        await addCaseUpdate(caseData.id, user.id, publicNote, undefined, true);
+        setPublicNote("");
+        setSubmittingPublic(false);
         router.refresh();
     }
 
@@ -177,72 +183,141 @@ export function CaseDetailClient({
                             <Clock className="w-5 h-5 text-indigo-400" />
                             ไทม์ไลน์
                         </h3>
-                        <div className="relative">
-                            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-700" />
-                            <div className="space-y-6">
-                                {caseData.updates.map((u) => (
-                                    <div key={u.id} className="relative flex gap-4 pl-10">
-                                        <div className="absolute left-2 top-1 w-5 h-5 rounded-full bg-slate-900 border-2 border-slate-600 flex items-center justify-center">
-                                            {getActionIcon(u.actionType)}
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="text-base font-semibold text-white">
-                                                    {u.user?.fullName || "ระบบ"}
-                                                </span>
-                                                {u.user?.role && (
-                                                    <span className="text-xs font-medium text-slate-400 bg-slate-800/80 border border-slate-700 px-2.5 py-0.5 rounded-md">
-                                                        {u.user.role}
-                                                    </span>
-                                                )}
-                                                <span className="text-sm text-slate-500">{formatDateTime(u.createdAt)}</span>
+                        <div className="space-y-6">
+                            {caseData.updates.map((u) => {
+                                // Default assumption for CaseDetailClient (Admin view):
+                                // If the user who made the update is the same as the assignee/staff, it's an admin reply (right side).
+                                // But a simpler logic is: if actionType === "COMMENT" and isPublic and !u.user, it's the reporter (left side).
+                                // Actually, any update by !u.user is either SYSTEM or REPORTER. 
+                                // Reporter's comment: !u.user && u.actionType === "COMMENT"
+                                const isReporterReply = !u.user && u.actionType === "COMMENT";
+                                const isSystem = !u.user && u.actionType !== "COMMENT";
+                                const isAdminReply = !!u.user;
+
+                                if (isReporterReply) {
+                                    return (
+                                        <div key={u.id} className="flex justify-start mb-4">
+                                            <div className="max-w-[85%] sm:max-w-[75%]">
+                                                <div className="flex items-center justify-start gap-2 mb-1">
+                                                    <span className="text-sm font-bold text-slate-800">ผู้แจ้ง (คุณ {caseData.reporter.fullName})</span>
+                                                    <span className="text-xs text-slate-400">{formatDateTime(u.createdAt)}</span>
+                                                </div>
+                                                <div className="bg-white border text-slate-800 border-slate-200 rounded-2xl rounded-tl-sm px-5 py-3 shadow-md">
+                                                    <p className="text-sm sm:text-base leading-relaxed">{u.note}</p>
+                                                </div>
                                             </div>
-                                            {u.actionType === "STATUS_CHANGE" && (
-                                                <div className="text-xs mb-1 flex items-center gap-1">
-                                                    <span className={`badge ${getStatusColor(u.oldValue || "")} text-[10px]`}>
-                                                        {getStatusLabel(u.oldValue || "")}
-                                                    </span>
-                                                    <span className="text-slate-500">→</span>
-                                                    <span className={`badge ${getStatusColor(u.newValue || "")} text-[10px]`}>
-                                                        {getStatusLabel(u.newValue || "")}
+                                        </div>
+                                    );
+                                }
+
+                                if (isAdminReply) {
+                                    return (
+                                        <div key={u.id} className="flex justify-end mb-4">
+                                            <div className="max-w-[85%] sm:max-w-[75%] flex flex-col items-end">
+                                                <div className="flex items-center justify-end gap-2 mb-1 text-right">
+                                                    <span className="text-xs text-slate-400">{formatDateTime(u.createdAt)}</span>
+                                                    {/* @ts-expect-error - isPublic check */}
+                                                    {u.isPublic && u.actionType === "COMMENT" && (
+                                                        <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full mr-2">
+                                                            PUBLIC
+                                                        </span>
+                                                    )}
+                                                    {u.user?.role && (
+                                                        <span className="text-[10px] font-medium text-slate-400 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-md">
+                                                            {u.user.role}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-sm font-bold text-slate-200">
+                                                        {u.user?.fullName}
                                                     </span>
                                                 </div>
-                                            )}
-                                            {u.actionType === "ASSIGN" && (
-                                                <p className="text-sm font-medium text-green-400 mb-2">
-                                                    มอบหมายให้: {u.newValue}
-                                                </p>
-                                            )}
-                                            {u.note && u.note !== "เคสถูกสร้างจากเว็บไซต์" && (
-                                                <p className="text-base text-slate-300 bg-slate-800/60 rounded-xl p-4 border border-slate-700/80 leading-relaxed shadow-sm">
-                                                    {u.note}
-                                                </p>
-                                            )}
+                                                {/* @ts-expect-error - isPublic check */}
+                                                <div className={`rounded-2xl rounded-tr-sm px-5 py-3 shadow-md ${u.actionType === 'COMMENT' && u.isPublic ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 border-slate-700 text-slate-300'} border`}>
+                                                    {/* @ts-expect-error - isPublic check */}
+                                                    {u.actionType === 'COMMENT' && !u.isPublic && (
+                                                        <div className="text-[11px] text-amber-500/80 mb-2 flex items-center justify-end gap-1 font-bold">
+                                                            <Lock className="w-3 h-3" /> บันทึกภายใน
+                                                        </div>
+                                                    )}
+                                                    {u.actionType === "STATUS_CHANGE" && (
+                                                        <div className="text-xs mb-2 bg-slate-900/50 p-2 rounded-lg inline-block border border-slate-700 w-full text-center">
+                                                            <span className={`badge ${getStatusColor(u.oldValue || "")} mr-1`}>
+                                                                {getStatusLabel(u.oldValue || "")}
+                                                            </span>
+                                                            →
+                                                            <span className={`badge ${getStatusColor(u.newValue || "")} ml-1`}>
+                                                                {getStatusLabel(u.newValue || "")}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {u.actionType === "ASSIGN" && (
+                                                        <p className="text-sm font-bold text-green-400 mb-1 text-right">มอบหมายให้: {u.newValue}</p>
+                                                    )}
+                                                    {u.note && (
+                                                        <p className="text-sm sm:text-base leading-relaxed text-right">{u.note}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                // System message (center)
+                                return (
+                                    <div key={u.id} className="flex justify-center mb-4 my-6">
+                                        <div className="bg-slate-800/80 border border-slate-700 text-slate-400 rounded-full px-4 py-1.5 text-xs flex items-center gap-2">
+                                            {getActionIcon(u.actionType)}
+                                            {u.note} • {formatDateTime(u.createdAt)}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                );
+                            })}
                         </div>
+
+                        {/* Public Reply Box (Inside Chat) */}
+                        {!isViewer && (
+                            <div className="mt-4 border-t border-slate-800 pt-4">
+                                <h4 className="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2">
+                                    <MessageCircle className="w-4 h-4" />
+                                    ตอบกลับผู้ใช้งาน (แชท)
+                                </h4>
+                                <div className="flex gap-2">
+                                    <textarea
+                                        value={publicNote}
+                                        onChange={(e) => setPublicNote(e.target.value)}
+                                        className="input-field min-h-[50px] flex-1 py-2 text-sm"
+                                        placeholder="พิมพ์ข้อความตอบกลับผู้ใช้งาน..."
+                                    />
+                                    <button
+                                        onClick={handleSubmitPublic}
+                                        disabled={!publicNote.trim() || submittingPublic}
+                                        className="btn-primary h-auto px-4 self-end"
+                                    >
+                                        {submittingPublic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Reply Box */}
+                    {/* Internal Reply Box */}
                     {!isViewer && (
-                        <div className="card">
+                        <div className="card border border-slate-700/50 bg-slate-800/30">
                             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Send className="w-5 h-5 text-indigo-400" />
-                                เพิ่มหมายเหตุ / เปลี่ยนสถานะ
+                                <AlertCircle className="w-5 h-5 text-slate-400" />
+                                บันทึกการทำงานภายใน / เปลี่ยนสถานะ
                             </h3>
                             <textarea
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                className="input-field min-h-[100px] mb-4"
-                                placeholder="พิมพ์หมายเหตุหรือข้อความ..."
+                                value={internalNote}
+                                onChange={(e) => setInternalNote(e.target.value)}
+                                className="input-field min-h-[80px] mb-4 bg-slate-900/50"
+                                placeholder="พิมพ์บันทึกข้อความภายในระบบ (ผู้แจ้งจะไม่เห็นข้อความนี้)..."
                             />
                             <div className="flex flex-wrap items-center gap-3">
                                 <select
                                     value={newStatus}
                                     onChange={(e) => setNewStatus(e.target.value)}
-                                    className="input-field w-auto py-2"
+                                    className="input-field w-auto py-2 bg-slate-900/50"
                                 >
                                     <option value="">ไม่เปลี่ยนสถานะ</option>
                                     <option value="OPEN">เปิด</option>
@@ -252,12 +327,12 @@ export function CaseDetailClient({
                                     <option value="CLOSED">ปิดเคส</option>
                                 </select>
                                 <button
-                                    onClick={handleSubmitUpdate}
-                                    disabled={!note.trim() || submitting}
-                                    className="btn-primary py-2"
+                                    onClick={handleSubmitInternal}
+                                    disabled={(!internalNote.trim() && !newStatus) || submittingInternal}
+                                    className="btn-primary py-2 bg-slate-700 hover:bg-slate-600 shadow-none border border-slate-600"
                                 >
-                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                    ส่ง
+                                    {submittingInternal ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                    บันทึกข้อมูล
                                 </button>
                             </div>
                         </div>

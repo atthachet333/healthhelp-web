@@ -5,13 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function generateCaseNo(): string {
+export function formatDateForCaseNo(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const random = Math.floor(Math.random() * 999999)
-    .toString()
-    .padStart(6, "0");
-  return `HD-${year}-${random}`;
+  const year = String(now.getFullYear() + 543).slice(-2); // Thai year 2 digits
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${day}-${month}-${year}`; // DD-MM-YY
+}
+
+// Keeping a simple random fallback just in case
+export function generateCaseNoFallback(): string {
+  const random = Math.floor(Math.random() * 999999).toString().padStart(6, "0");
+  return `HH-${formatDateForCaseNo()}-0-${random}`;
 }
 
 export function generateTrackingCode(): string {

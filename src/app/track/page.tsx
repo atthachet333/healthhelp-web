@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getCaseByTracking, getCasesByPhone, submitCSAT } from "@/app/actions/case-actions";
+import { getCaseByTracking, getCasesByPhone, submitCSAT, addPublicCaseUpdate } from "@/app/actions/case-actions";
 import Link from "next/link";
 import {
     Search,
@@ -23,9 +23,13 @@ export default function TrackPage() {
     const [searchType, setSearchType] = useState<"tracking" | "phone">("tracking");
     const [searchValue, setSearchValue] = useState("");
     const [loading, setLoading] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [caseData, setCaseData] = useState<any>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [caseList, setCaseList] = useState<any[]>([]);
     const [error, setError] = useState("");
+    const [userReply, setUserReply] = useState("");
+    const [submittingReply, setSubmittingReply] = useState(false);
 
     // CSAT state
     const [csatScore, setCsatScore] = useState(0);
@@ -60,6 +64,21 @@ export default function TrackPage() {
         setLoading(false);
     }
 
+    async function handleUserReply() {
+        if (!caseData || !userReply.trim()) return;
+        setSubmittingReply(true);
+        const res = await addPublicCaseUpdate(caseData.trackingCode, userReply);
+        if (res.success) {
+            setUserReply("");
+            // Refresh case data
+            const data = await getCaseByTracking(caseData.trackingCode);
+            if (data) setCaseData(data);
+        } else {
+            setError(res.error || "เกิดข้อผิดพลาดในการส่งข้อความ");
+        }
+        setSubmittingReply(false);
+    }
+
     async function handleCSAT() {
         if (!caseData || csatScore === 0) return;
         setCsatSubmitting(true);
@@ -85,28 +104,41 @@ export default function TrackPage() {
     return (
         <div className="theme-light min-h-screen">
             {/* Header */}
-            <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-slate-200">
-                <div className="max-w-6xl mx-auto px-6 lg:px-8 py-4 flex items-center justify-between">
+            <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-slate-200/50 shadow-sm">
+                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                            <HeartPulse className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm">
+                            <HeartPulse className="w-5 h-5 text-white" />
                         </div>
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-900">HealthHelp</h1>
-                            <p className="text-xs text-slate-500">ติดตามสถานะเคส</p>
-                        </div>
+                        <h1 className="text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">HealthHelp</h1>
                     </Link>
-                    <Link href="/" className="btn-secondary text-sm ml-auto bg-white hover:bg-slate-50 border-slate-300 mr-2 sm:mr-4">
-                        <ArrowLeft className="w-4 h-4" />
-                        กลับหน้าแจ้งปัญหา
-                    </Link>
+                    <nav className="hidden md:flex items-center gap-5">
+                        <Link href="/" className="px-4 py-2 text-base font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-colors">
+                            หน้าแรก
+                        </Link>
+                        <Link href="/track" className="px-4 py-2 text-base font-semibold text-blue-700 bg-blue-50 rounded-lg transition-colors">
+                            ติดตามเคส
+                        </Link>
+                        <Link href="/contact" className="px-4 py-2 text-base font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-colors">
+                            ติดต่อเรา
+                        </Link>
+                    </nav>
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href="/admin/login"
+                            className="flex items-center gap-2 px-4 py-2 text-base font-medium text-slate-500 hover:text-blue-600 transition-colors"
+                        >
+                            <User className="w-5 h-5" />
+                            <span className="hidden sm:inline">เจ้าหน้าที่</span>
+                        </Link>
+                    </div>
                 </div>
             </header>
 
             <main className="w-full flex-grow flex flex-col min-h-[calc(100vh-73px)]">
                 {mode === "search" && (
                     <div className="w-full h-full flex-grow flex flex-col items-center justify-start px-6 sm:px-10 pt-10 sm:pt-20 pb-20 bg-white/40 backdrop-blur-md min-h-[calc(100vh-73px)]">
-                        <div className="max-w-xl w-full mx-auto text-center flex flex-col items-center justify-start flex-grow mt-4 sm:mt-10">
+                        <div className="w-full max-w-2xl mx-auto text-center flex flex-col items-center justify-start flex-grow mt-4 sm:mt-10">
                             <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 shadow-md">
                                 <Search className="w-8 h-8 text-white" />
                             </div>
@@ -163,7 +195,7 @@ export default function TrackPage() {
 
                 {mode === "result" && caseData && (
                     <div className="w-full h-full flex-grow flex flex-col items-center justify-start px-2 sm:px-6 md:px-10 pt-8 sm:pt-14 pb-20 bg-white/40 backdrop-blur-md min-h-[calc(100vh-73px)]">
-                        <div className="w-full max-w-4xl mx-auto flex-grow flex flex-col">
+                        <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col">
                             <div className="flex justify-end mb-4 sm:mb-6">
                                 <button onClick={() => { setMode("search"); setCaseData(null); }} className="btn-secondary text-sm bg-white hover:bg-slate-50 border-slate-300 px-6 shadow-sm">
                                     <ArrowLeft className="w-4 h-4" />
@@ -215,45 +247,117 @@ export default function TrackPage() {
                             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 w-full">
                                 <h4 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
                                     <Clock className="w-6 h-6 text-indigo-500" />
-                                    ไทม์ไลน์สถานะ
+                                    การสนทนาและไทม์ไลน์
                                 </h4>
-                                <div className="relative pl-2">
-                                    <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200" />
-                                    <div className="space-y-6">
-                                        {caseData.updates?.map((u: any, i: number) => (
-                                            <div key={i} className="relative flex gap-4 pl-10">
-                                                <div className="absolute left-2 top-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center">
-                                                    {getActionIcon(u.actionType)}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-medium text-slate-800">
-                                                            {u.user?.fullName || "ระบบ"}
-                                                        </span>
-                                                        <span className="text-xs text-slate-400">{formatDateTime(u.createdAt)}</span>
-                                                    </div>
-                                                    {u.actionType === "STATUS_CHANGE" && (
-                                                        <div className="text-xs mb-1">
-                                                            <span className={`badge ${getStatusColor(u.oldValue || "")} mr-1`}>
-                                                                {getStatusLabel(u.oldValue || "")}
-                                                            </span>
-                                                            →
-                                                            <span className={`badge ${getStatusColor(u.newValue || "")} ml-1`}>
-                                                                {getStatusLabel(u.newValue || "")}
+                                <div className="space-y-6">
+                                    {caseData.updates?.filter((u: any) => {
+                                        // WHITELIST — only show entries safe for the case reporter:
+                                        const isSystemEvent = !u.user && u.actionType !== "COMMENT";
+                                        const isReporterReply = !u.user && u.actionType === "COMMENT";
+                                        const isPublicAdminComment = !!u.user && u.actionType === "COMMENT" && u.isPublic === true;
+                                        return isSystemEvent || isReporterReply || isPublicAdminComment;
+                                    }).map((u: any, i: number) => {
+                                        const isUserReply = !u.user && u.actionType === "COMMENT";
+                                        const isSystem = !u.user && u.actionType !== "COMMENT";
+                                        const isAdmin = !!u.user;
+
+                                        // ── ผู้แจ้ง (ขวา) ─────────────────────────────────────
+                                        if (isUserReply) {
+                                            return (
+                                                <div key={i} className="flex justify-end mb-5">
+                                                    <div className="max-w-[85%] sm:max-w-[70%]">
+                                                        {/* Label */}
+                                                        <div className="flex items-center justify-end gap-2 mb-1.5 pr-1">
+                                                            <span className="text-xs text-slate-500">{formatDateTime(u.createdAt)}</span>
+                                                            <span className="inline-flex items-center gap-1 text-sm font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">
+                                                                👤 คุณ (ผู้แจ้ง)
                                                             </span>
                                                         </div>
-                                                    )}
-                                                    {u.actionType === "ASSIGN" && (
-                                                        <p className="text-xs text-green-600 mb-1">มอบหมายให้: {u.newValue}</p>
-                                                    )}
-                                                    {u.note && (
-                                                        <p className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3">{u.note}</p>
-                                                    )}
+                                                        {/* Bubble */}
+                                                        <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-none px-5 py-4 shadow-lg border-2 border-indigo-700">
+                                                            <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        // ── ระบบ / เจ้าหน้าที่ (ซ้าย) ─────────────────────────
+                                        const senderLabel = isSystem
+                                            ? "⚙️ ระบบ"
+                                            : `🧑‍💼 เจ้าหน้าที่: ${u.user?.fullName}`;
+                                        const bubbleBg   = isSystem
+                                            ? "bg-slate-100 border-slate-300 text-slate-700"
+                                            : "bg-teal-700 border-teal-800 text-white";
+                                        const labelColor = isSystem
+                                            ? "text-slate-600 bg-slate-200"
+                                            : "text-teal-800 bg-teal-100";
+                                        const avatarBg   = isSystem
+                                            ? "bg-slate-200 text-slate-500"
+                                            : "bg-teal-600 text-white";
+
+                                        return (
+                                            <div key={i} className="flex justify-start mb-5">
+                                                <div className="max-w-[85%] sm:max-w-[70%] flex gap-3">
+                                                    {/* Avatar */}
+                                                    <div className={`mt-6 shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${avatarBg}`}>
+                                                        {isSystem ? "⚙" : "👨‍💼"}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        {/* Label */}
+                                                        <div className="flex items-center gap-2 mb-1.5 pl-1">
+                                                            <span className={`inline-flex items-center text-sm font-bold px-2.5 py-0.5 rounded-full ${labelColor}`}>
+                                                                {senderLabel}
+                                                            </span>
+                                                            <span className="text-xs text-slate-400">{formatDateTime(u.createdAt)}</span>
+                                                        </div>
+                                                        {/* Bubble */}
+                                                        <div className={`rounded-2xl rounded-tl-none px-5 py-4 shadow-md border-2 ${bubbleBg}`}>
+                                                            {u.actionType === "STATUS_CHANGE" && (
+                                                                <div className="flex items-center gap-2 flex-wrap mb-3 bg-white/20 rounded-xl px-3 py-2 w-max border border-white/30">
+                                                                    <span className={`badge ${getStatusColor(u.oldValue || "")} text-sm px-3 py-1 font-bold`}>
+                                                                        {getStatusLabel(u.oldValue || "")}
+                                                                    </span>
+                                                                    <span className="font-bold text-lg">→</span>
+                                                                    <span className={`badge ${getStatusColor(u.newValue || "")} text-sm px-3 py-1 font-bold`}>
+                                                                        {getStatusLabel(u.newValue || "")}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {u.note && (
+                                                                <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
+
+                                {/* User Reply Box */}
+                                {caseData.status !== "RESOLVED" && caseData.status !== "CLOSED" && (
+                                    <div className="mt-8 pt-6 border-t border-slate-200">
+                                        <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                            <MessageCircle className="w-4 h-4 text-indigo-500" />
+                                            ตอบกลับ / ให้ข้อมูลเพิ่มเติม
+                                        </h4>
+                                        <textarea
+                                            value={userReply}
+                                            onChange={(e) => setUserReply(e.target.value)}
+                                            className="input-field min-h-[100px] mb-3 text-sm"
+                                            placeholder="พิมพ์ข้อความตอบกลับเจ้าหน้าที่ที่นี่..."
+                                        />
+                                        <button
+                                            onClick={handleUserReply}
+                                            disabled={!userReply.trim() || submittingReply}
+                                            className="btn-primary w-full sm:w-auto px-8"
+                                        >
+                                            {submittingReply ? <Loader2 className="w-4 h-4 animate-spin mr-2 inline" /> : null}
+                                            ส่งข้อความ
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* CSAT Section */}
@@ -313,7 +417,7 @@ export default function TrackPage() {
 
                 {mode === "history" && (
                     <div className="w-full h-full flex-grow flex flex-col items-center justify-start px-6 sm:px-10 pt-10 sm:pt-14 pb-20 bg-white/40 backdrop-blur-md min-h-[calc(100vh-73px)]">
-                        <div className="w-full max-w-4xl mx-auto flex-grow flex flex-col">
+                        <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col">
                             <div className="flex justify-end mb-4 sm:mb-6">
                                 <button onClick={() => { setMode("search"); setCaseList([]); }} className="btn-secondary text-sm bg-white hover:bg-slate-50 border-slate-300 shadow-sm">
                                     <ArrowLeft className="w-4 h-4" />
@@ -324,6 +428,7 @@ export default function TrackPage() {
                             <h3 className="text-2xl font-bold text-slate-900 mb-6">ประวัติการแจ้ง ({caseList.length} เคส)</h3>
 
                             <div className="space-y-3">
+                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                 {caseList.map((c: any) => (
                                     <div
                                         key={c.id}

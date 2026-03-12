@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-    HeartPulse,
     LayoutDashboard,
     FileText,
     Settings,
     LogOut,
     Menu,
-    X,
     Users,
-    ChevronRight,
+    PlusCircle,
+    Database,
 } from "lucide-react";
 
 interface UserSession {
@@ -36,6 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
         try {
             const parsedUser = JSON.parse(stored);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setUser(parsedUser);
 
             if (pathname.startsWith("/admin/users") && parsedUser.role !== "ADMIN") {
@@ -63,7 +63,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const navItems = [
         { href: "/admin/dashboard", icon: LayoutDashboard, label: "แดชบอร์ด", roles: ["ADMIN", "SUPERVISOR", "STAFF", "VIEWER"] },
-        { href: "/admin/cases", icon: FileText, label: "จัดการเคส", roles: ["ADMIN", "SUPERVISOR", "STAFF", "VIEWER"] },
+        { href: "/admin/create", icon: PlusCircle, label: "แจ้งปัญหาใหม่", roles: ["ADMIN", "SUPERVISOR", "STAFF", "VIEWER"] },
+        { href: "/admin/cases", icon: FileText, label: "เคสทั้งหมด", roles: ["ADMIN", "SUPERVISOR", "STAFF", "VIEWER"] },
+        { href: "/admin/master-data", icon: Database, label: "ฐานข้อมูล", roles: ["ADMIN", "SUPERVISOR"] },
+        { href: "/admin/sheet", icon: FileText, label: "Sheet ข้อมูล", roles: ["ADMIN", "SUPERVISOR"], target: "_blank" },
         { href: "/admin/settings", icon: Settings, label: "ตั้งค่า", roles: ["ADMIN", "SUPERVISOR"] },
         { href: "/admin/users", icon: Users, label: "ผู้ใช้งาน", roles: ["ADMIN"] },
     ];
@@ -78,87 +81,109 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
 
     return (
-        <div className="min-h-screen flex">
+        <div className="min-h-screen flex bg-[#0b1121]">
             {/* Mobile Overlay */}
             {sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
             <aside
-                className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+                className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0d1526] border-r border-[#1a2540] flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
                     }`}
             >
                 {/* Logo */}
-                <div className="p-8 border-b border-slate-800 bg-slate-800/20">
-                    <div className="flex flex-col items-center gap-4 text-center">
-                        <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center glow-sm shadow-xl">
-                            <HeartPulse className="w-10 h-10 text-white" />
+                <div className="px-5 py-7 border-b border-[#1a2540]">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <span className="text-white font-bold text-base">IT</span>
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-white tracking-wide truncate max-w-[200px] mb-1">HealthHelp</h1>
-                            <p className="text-sm text-slate-300 font-medium truncate max-w-[200px]">{user.fullName}</p>
-                            <p className="text-xs text-slate-400 truncate max-w-[200px]">{user.email}</p>
+                            <h1 className="text-base font-bold text-white leading-tight">Hospital IT</h1>
+                            <p className="text-xs text-slate-400 font-medium">helpdesk</p>
                         </div>
                     </div>
                 </div>
 
-                <nav className="flex-1 p-5 mt-2">
-                    <div className="grid grid-cols-2 gap-3 mb-6">
+                {/* Navigation */}
+                <nav className="flex-1 px-4 py-6">
+                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mb-4 px-4">เมนูหลัก</p>
+                    <div className="space-y-2">
                         {filteredNavItems.map((item) => {
                             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    target={item.target}
                                     onClick={() => setSidebarOpen(false)}
-                                    className={`flex flex-col items-center justify-center gap-2 p-6 rounded-2xl transition-all text-sm font-semibold text-center border ${isActive
-                                        ? "bg-indigo-600/20 text-indigo-400 border-indigo-500/30 shadow-sm"
-                                        : "bg-slate-800/20 text-slate-400 border-slate-700/50 hover:text-slate-200 hover:bg-slate-800"
+                                    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-medium ${isActive
+                                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                                        : "text-slate-400 hover:text-slate-200 hover:bg-[#1a2540]"
                                         }`}
                                 >
-                                    <item.icon className="w-8 h-8 mb-1" />
-                                    <span>{item.label}</span>
+                                    <item.icon className="w-[22px] h-[22px]" />
+                                    <span className="text-base">{item.label}</span>
                                 </Link>
                             );
                         })}
-
-                    </div>
-
-                    <div className="pt-4 mt-2 border-t border-slate-800 h-full flex flex-col justify-end">
-                        <button
-                            onClick={handleLogout}
-                            className="w-full flex flex-col items-center justify-center gap-3 p-6 rounded-2xl text-red-500 transition-all text-base font-bold bg-slate-800/20 hover:bg-red-500/10 shadow-sm border border-slate-700/50 hover:border-red-500/30"
-                        >
-                            <LogOut className="w-8 h-8" />
-                            <span>ออกจากระบบ</span>
-                        </button>
                     </div>
                 </nav>
+
+                {/* User info + Logout */}
+                <div className="px-4 pb-6 border-t border-[#1a2540] pt-6">
+                    <div className="flex items-center gap-3 px-4 mb-5">
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                            <span className="text-base font-bold text-white">{user.fullName.charAt(0)}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-200 truncate">{user.fullName}</p>
+                            <p className="text-xs text-slate-400 truncate">{roleLabel[user.role] || user.role}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-base font-semibold"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span>ออกจากระบบ</span>
+                    </button>
+                </div>
             </aside>
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-h-screen">
-                {/* Mobile Header */}
-                <header className="sticky top-0 z-30 lg:hidden bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        className="p-2 rounded-lg bg-slate-800 text-slate-400"
-                    >
-                        <Menu className="w-5 h-5" />
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <HeartPulse className="w-5 h-5 text-indigo-400" />
-                        <span className="font-bold text-white">HealthHelp</span>
+                {/* Top Header Bar */}
+                <header className="sticky top-0 z-30 bg-[#0d1526]/95 backdrop-blur-md border-b border-[#1a2540] px-4 lg:px-8 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className="p-2 rounded-lg bg-[#1a2540] text-slate-400 lg:hidden"
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
+                        <h2 className="text-lg font-bold text-white hidden lg:block">
+                            {filteredNavItems.find(i => pathname === i.href || pathname.startsWith(i.href + "/"))?.label || "Dashboard"}
+                        </h2>
+                        <div className="flex items-center gap-2 lg:hidden">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                                <span className="text-white font-bold text-[10px]">IT</span>
+                            </div>
+                            <span className="font-bold text-white text-sm">HealthHelp</span>
+                        </div>
                     </div>
-                    <div className="w-9" />
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center cursor-pointer">
+                            <span className="text-white text-sm font-bold">{user.fullName.charAt(0)}</span>
+                        </div>
+                    </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-8 bg-slate-950">{children}</main>
+                <main className="flex-1 p-4 lg:p-6 bg-[#0b1121]">{children}</main>
             </div>
         </div>
     );

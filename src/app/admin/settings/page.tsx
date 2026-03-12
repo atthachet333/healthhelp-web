@@ -7,5 +7,6 @@ export default async function SettingsPage() {
         getSLARules(),
     ]);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return <SettingsClient categories={categories} slaRules={slaRules as any} />;
 }

@@ -3,18 +3,31 @@
 import { prisma } from "@/lib/prisma";
 import { CaseStatus, ActionType, Priority, Role } from "@prisma/client";
 import { compare } from "bcryptjs";
+import { updateSheetCaseStatus, updateSheetAssignee } from "@/lib/google-sheets";
+import { getStatusLabel } from "@/lib/utils";
 
 // ============ AUTH ============
 export async function loginAction(email: string, password: string) {
     try {
+        console.log(`[LOGIN ATTEMPT] Email: '${email}'`);
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.active) {
+
+        if (!user) {
+            console.log(`[LOGIN FAILED] User not found the DB`);
             return { success: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
         }
+        if (!user.active) {
+            console.log(`[LOGIN FAILED] User is inactive`);
+            return { success: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+        }
+
         const valid = await compare(password, user.passwordHash);
         if (!valid) {
+            console.log(`[LOGIN FAILED] Invalid password for ${email}`);
             return { success: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
         }
+
+        console.log(`[LOGIN SUCCESS] User: ${user.email} (${user.role})`);
         // Return user data (exclude password)
         return {
             success: true,
@@ -107,11 +120,14 @@ export async function getDashboardMetrics(timeFilter: "DAY" | "MONTH" | "YEAR" =
                 dailyCounts[key] = { date: key, created: 0, resolved: 0 };
             }
         } else if (timeFilter === "YEAR") {
-            startDate = new Date(refDate.getFullYear() - 4, 0, 1);
-            endDate = new Date(refDate.getFullYear(), 11, 31, 23, 59, 59, 999);
+            // Requested range: 2569 - 2574 (which is 2026 - 2031 in Gregorian)
+            const startYear = 2026;
+            const endYear = 2031;
 
-            for (let i = 4; i >= 0; i--) {
-                const y = refDate.getFullYear() - i;
+            startDate = new Date(startYear, 0, 1);
+            endDate = new Date(endYear, 11, 31, 23, 59, 59, 999);
+
+            for (let y = startYear; y <= endYear; y++) {
                 const key = `${y}`; // YYYY
                 dailyCounts[key] = { date: key, created: 0, resolved: 0 };
             }
@@ -183,7 +199,19 @@ export async function getCases(params: {
     const { status, priority, assigneeId, search, page = 1, limit = 20 } = params;
 
     const where: Record<string, unknown> = {};
-    if (status && status !== "ALL") where.status = status;
+    if (status && status !== "ALL") {
+        if (status === "ACTIVE") {
+            where.status = { notIn: ["RESOLVED", "CLOSED"] };
+        } else if (status === "HIDE_DONE") {
+            // Hide only completed/closed cases — keeps IN_PROGRESS, OPEN, WAITING_INFO
+            where.status = { notIn: ["RESOLVED", "CLOSED"] };
+        } else if (status === "SHOW_DONE") {
+            // Show ONLY completed/closed cases
+            where.status = { in: ["RESOLVED", "CLOSED"] };
+        } else {
+            where.status = status;
+        }
+    }
     if (priority && priority !== "ALL") where.priority = priority;
     if (assigneeId && assigneeId !== "ALL") where.assigneeId = assigneeId;
     if (search) {
@@ -197,6 +225,7 @@ export async function getCases(params: {
 
     const [data, total] = await Promise.all([
         prisma.case.findMany({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             where: where as any,
             include: {
                 reporter: { select: { fullName: true, phone: true } },
@@ -207,6 +236,7 @@ export async function getCases(params: {
             skip: (page - 1) * limit,
             take: limit,
         }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         prisma.case.count({ where: where as any }),
     ]);
 
@@ -234,7 +264,7 @@ export async function getCaseById(id: string) {
 }
 
 // ============ UPDATE CASE ============
-export async function addCaseUpdate(caseId: string, userId: string, note: string, newStatus?: string) {
+export async function addCaseUpdate(caseId: string, userId: string, note: string, newStatus?: string, isPublic?: boolean) {
     try {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.role === "VIEWER") {
@@ -244,6 +274,7 @@ export async function addCaseUpdate(caseId: string, userId: string, note: string
         const caseData = await prisma.case.findUnique({ where: { id: caseId } });
         if (!caseData) return { success: false, error: "ไม่พบเคส" };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updates: any = {};
         let actionType: ActionType = ActionType.COMMENT;
         let oldValue: string | null = null;
@@ -261,6 +292,9 @@ export async function addCaseUpdate(caseId: string, userId: string, note: string
             if (newStatus === CaseStatus.CLOSED) {
                 updates.closedAt = new Date();
             }
+
+            // Sync status with Google Sheets
+            updateSheetCaseStatus(caseData.trackingCode, getStatusLabel(newStatus)).catch(e => console.error("Sheet Sync Error:", e));
         }
 
         // Update case
@@ -268,7 +302,15 @@ export async function addCaseUpdate(caseId: string, userId: string, note: string
 
         // Create timeline entry
         await prisma.caseUpdate.create({
-            data: { caseId, userId, actionType, oldValue, newValue, note },
+            data: {
+                caseId,
+                userId,
+                actionType,
+                oldValue,
+                newValue,
+                note,
+                isPublic: isPublic !== undefined ? isPublic : false,
+            },
         });
 
         // Audit log
@@ -308,6 +350,10 @@ export async function assignCase(caseId: string, assigneeId: string, currentUser
             : null;
 
         await prisma.case.update({ where: { id: caseId }, data: { assigneeId } });
+
+        // Sync assignee to Google Sheets (fire-and-forget, same pattern as status sync)
+        updateSheetAssignee(caseData.trackingCode, assignee.fullName)
+            .catch(e => console.error("[Sheet Sync] Assignee update failed:", e));
 
         await prisma.caseUpdate.create({
             data: {
