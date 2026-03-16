@@ -7,9 +7,12 @@
 
 เปิดดูไฟล์ mockup ได้ทันทีจากลิงก์นี้:
 
+- [ดูภาพ Mockup](./mockup/ticket-dashboard-mockup.png)
 - [mockup/TicketDashboardMockup.tsx](./mockup/TicketDashboardMockup.tsx)
 
 ไฟล์นี้เป็น mockup หน้า Dashboard สำหรับระบบจัดการ Ticket ที่ออกแบบจากโทน UI ของระบบปัจจุบัน เพื่อใช้ดูแนวทางหน้าตาและนำไปต่อยอดได้ทันที
+
+![Dashboard Mockup](./mockup/ticket-dashboard-mockup.png)
 
 ## คู่มือการใช้งาน
 
