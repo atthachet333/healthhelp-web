@@ -16,7 +16,7 @@ export function formatDateForCaseNo(): string {
 // Keeping a simple random fallback just in case
 export function generateCaseNoFallback(): string {
   const random = Math.floor(Math.random() * 999999).toString().padStart(6, "0");
-  return `HH-${formatDateForCaseNo()}-0-${random}`;
+  return `HH-${formatDateForCaseNo()}-${random}`;
 }
 
 export function generateTrackingCode(): string {

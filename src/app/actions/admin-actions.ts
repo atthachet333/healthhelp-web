@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { CaseStatus, ActionType, Priority, Role } from "@prisma/client";
 import { compare } from "bcryptjs";
-import { updateSheetCaseStatus, updateSheetAssignee } from "@/lib/google-sheets";
+import { updateSheetCaseStatus, updateSheetAssignee, appendAttachmentToSheet } from "@/lib/google-sheets";
 import { getStatusLabel } from "@/lib/utils";
 
 // ============ AUTH ============
@@ -159,7 +159,7 @@ export async function getDashboardMetrics(timeFilter: "DAY" | "MONTH" | "YEAR" =
         const users = await prisma.user.findMany({ where: { role: { in: [Role.STAFF, Role.SUPERVISOR] } } });
         const userMap = Object.fromEntries(users.map((u) => [u.id, u.fullName]));
         const staffStats = staffPerformance.map((s) => ({
-            name: userMap[s.assigneeId!] || "ไม่ระบุ",
+            name: userMap[s.assigneeId!] || "สมชาย ผู้ดูแลระบบ",
             cases: s._count,
         }));
 
@@ -264,14 +264,24 @@ export async function getCaseById(id: string) {
 }
 
 // ============ UPDATE CASE ============
-export async function addCaseUpdate(caseId: string, userId: string, note: string, newStatus?: string, isPublic?: boolean) {
+export async function addCaseUpdate(
+    caseId: string, 
+    userId: string, 
+    note: string, 
+    newStatus?: string, 
+    isPublic?: boolean,
+    attachments?: { fileName: string; fileUrl: string; fileKey: string; fileType?: string }[]
+) {
     try {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.role === "VIEWER") {
             return { success: false, error: "ไม่มีสิทธิ์ในการแก้ไขเคส" };
         }
 
-        const caseData = await prisma.case.findUnique({ where: { id: caseId } });
+        const caseData = await prisma.case.findUnique({ 
+            where: { id: caseId },
+            include: { reporter: true }
+        });
         if (!caseData) return { success: false, error: "ไม่พบเคส" };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -301,7 +311,7 @@ export async function addCaseUpdate(caseId: string, userId: string, note: string
         await prisma.case.update({ where: { id: caseId }, data: { ...updates, updatedAt: new Date() } });
 
         // Create timeline entry
-        await prisma.caseUpdate.create({
+        const updateRecord = await prisma.caseUpdate.create({
             data: {
                 caseId,
                 userId,
@@ -310,8 +320,30 @@ export async function addCaseUpdate(caseId: string, userId: string, note: string
                 newValue,
                 note,
                 isPublic: isPublic !== undefined ? isPublic : false,
+                attachments: attachments?.length ? {
+                    create: attachments.map(att => ({
+                        fileName: att.fileName,
+                        fileUrl: att.fileUrl,
+                        fileKey: att.fileKey,
+                        fileType: att.fileType || "application/octet-stream",
+                    }))
+                } : undefined,
             },
         });
+
+        // Sync attachments to Google Sheets Attachments tab
+        if (attachments?.length) {
+            for (const att of attachments) {
+                const sheetData = [
+                    new Date(),
+                    caseData.caseNo,
+                    caseData.reporter?.phone || "-",
+                    att.fileName,
+                    att.fileUrl 
+                ];
+                appendAttachmentToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
+            }
+        }
 
         // Audit log
         await prisma.auditLog.create({

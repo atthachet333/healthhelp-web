@@ -77,10 +77,10 @@ export async function createCase(input: CreateCaseInput) {
             return seq.lastCount;
         });
 
-        // Format: HH-DD-MM-YY-0-00001
+        // Format: HH-DD-MM-YY-00001
         // We ensure sequence is padded with 5 zeros (e.g., 00001, 00002)
         const seqNumStr = String(sequence).padStart(5, '0');
-        const caseNo = `HH-${dateStr}-0-${seqNumStr}`;
+        const caseNo = `HH-${dateStr}-${seqNumStr}`;
 
         let trackingCode = generateTrackingCode();
         while (await prisma.case.findUnique({ where: { trackingCode } })) {
@@ -128,23 +128,24 @@ export async function createCase(input: CreateCaseInput) {
         await sendLineNotify(lineMsg);
 
         // Build the row matching SHEET_COLUMNS order exactly:
-        // [DATE, CASE_NO, TRACKING, NAME, PHONE, EMAIL, LINE_ID, CATEGORY, PRIORITY, STATUS, SUBJECT, DETAIL, ASSIGNEE, HOSPITAL, HOSP_CODE]
+        // [DATE, CASE_NO, TRACKING, NAME, PHONE, EMAIL, ADDRESS, LINE_ID, CATEGORY, PRIORITY, STATUS, SUBJECT, DETAIL, ASSIGNEE, HOSPITAL, HOSP_CODE]
         const sheetData = [
-            newCase.createdAt,                 // [0] DATE      → A
-            caseNo,                            // [1] CASE_NO   → B
-            trackingCode,                      // [2] TRACKING  → C  ← used by updateSheetCaseStatus
-            data.fullName,                     // [3] NAME      → D
-            data.phone,                        // [4] PHONE     → E
-            data.email || "-",                 // [5] EMAIL     → F
-            data.lineId || "-",                // [6] LINE_ID   → G
-            category?.name || "ไม่ระบุ",        // [7] CATEGORY  → H ← conditional formatting
-            getPriorityLabel(priority),        // [8] PRIORITY  → I
-            getStatusLabel("OPEN"),            // [9] STATUS    → J ← updated by updateSheetCaseStatus
-            data.problemSummary,               // [10] SUBJECT  → K
-            data.description || "",            // [11] DETAIL   → L
-            "",                                // [12] ASSIGNEE → M (empty at creation)
-            hospital?.name || "",              // [13] HOSPITAL → N
-            hospital?.code || "",              // [14] HOSP_CODE → O ← รหัส 9 หลัก
+            newCase.createdAt,                 // DATE      → A
+            caseNo,                            // CASE_NO   → B
+            trackingCode,                      // TRACKING  → C  ← used by updateSheetCaseStatus
+            data.fullName,                     // NAME      → D
+            data.phone,                        // PHONE     → E
+            data.email || "-",                 // EMAIL     → F
+            data.address || "-",               // ADDRESS   → G
+            data.lineId || "-",                // LINE_ID   → H
+            category?.name || "ไม่ระบุ",        // CATEGORY  → I ← conditional formatting
+            getPriorityLabel(priority),        // PRIORITY  → J
+            getStatusLabel("OPEN"),            // STATUS    → K ← updated by updateSheetCaseStatus
+            data.problemSummary,               // SUBJECT   → L
+            data.description || "",            // DETAIL    → M
+            "",                                // ASSIGNEE  → N (empty at creation)
+            hospital?.name || "",              // HOSPITAL  → O
+            hospital?.code || "",              // HOSP_CODE → P ← รหัส 9 หลัก
         ];
         // Sanity check: array length must equal number of SHEET_COLUMNS entries
         console.assert(sheetData.length === Object.keys(SHEET_COLUMNS).length,
@@ -275,21 +276,39 @@ export async function getCategories() {
     });
 }
 
-export async function addPublicCaseUpdate(trackingCode: string, note: string) {
+export async function addPublicCaseUpdate(
+    trackingCode: string,
+    note: string,
+    attachments?: { fileName: string; fileUrl: string; fileType: string; fileSize: number }[]
+) {
     try {
         const caseData = await prisma.case.findUnique({ where: { trackingCode } });
         if (!caseData) return { success: false, error: "ไม่พบเคส" };
 
-        await prisma.caseUpdate.create({
+        const finalNote = note.trim() || (attachments && attachments.length > 0 ? "ส่งไฟล์แนบ/รูปภาพเพิ่มเติม" : "");
+
+        const update = await prisma.caseUpdate.create({
             data: {
                 caseId: caseData.id,
                 actionType: ActionType.COMMENT,
-                note: note,
-            }
+                note: finalNote,
+                ...(attachments && attachments.length > 0
+                    ? {
+                        attachments: {
+                            create: attachments.map((a) => ({
+                                fileName: a.fileName,
+                                fileUrl: a.fileUrl,
+                                fileType: a.fileType,
+                                fileSize: a.fileSize,
+                            })),
+                        },
+                    }
+                    : {}),
+            },
         });
 
         // Notify admins if user replies
-        const lineMsg = `💬 ผู้แจ้งตอบกลับเคส!\nเลขที่: ${caseData.caseNo}\nข้อความ: ${note}\nตรวจสอบได้ที่ระบบ HealthHelp`;
+        const lineMsg = `💬 ผู้แจ้งตอบกลับเคส!\nเลขที่: ${caseData.caseNo}\nข้อความ: ${finalNote}${attachments && attachments.length > 0 ? `\n📎 แนบไฟล์ ${attachments.length} ไฟล์` : ""}\nตรวจสอบได้ที่ระบบ HealthHelp`;
         await sendLineNotify(lineMsg);
 
         return { success: true };

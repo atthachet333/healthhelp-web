@@ -1,8 +1,11 @@
 /**
  * sync_to_sheet.ts
  * Re-syncs all existing cases from DB to Google Sheet.
- * Column layout: A:วันที่ B:เลขที่เคส C:Tracking D:ชื่อ E:เบอร์ F:อีเมล G:LineID
- *               H:หมวดหมู่ I:ระดับ J:สถานะ K:หัวข้อ L:รายละเอียด M:ผู้รับผิดชอบ N:โรงพยาบาล
+ * Column layout (matches SHEET_COLUMNS in lib/google-sheets.ts):
+ *   A:วันที่/เวลา  B:เลขที่เคส  C:Tracking  D:ชื่อผู้แจ้ง  E:เบอร์โทร
+ *   F:อีเมล       G:สถานที่/ที่อยู่  H:Line ID  I:หมวดหมู่  J:ระดับ
+ *   K:สถานะ       L:หัวข้อปัญหา  M:รายละเอียด  N:ผู้รับผิดชอบ
+ *   O:ชื่อโรงพยาบาล  P:รหัส 9 หลัก
  * Run with: npx tsx sync_to_sheet.ts
  */
 import { PrismaClient } from "@prisma/client";
@@ -21,9 +24,32 @@ const auth = new google.auth.GoogleAuth({
     scopes: SCOPES,
 });
 
+const SHEET_HEADERS = [
+    "วันที่/เวลา",       // A
+    "เลขที่เคส",         // B
+    "Tracking Code",     // C
+    "ชื่อผู้แจ้ง",        // D
+    "เบอร์โทร",          // E
+    "อีเมล",             // F
+    "สถานที่/ที่อยู่",     // G
+    "Line ID",           // H
+    "หมวดหมู่",           // I
+    "ระดับ",              // J
+    "สถานะ",             // K
+    "หัวข้อปัญหา",        // L
+    "รายละเอียด",         // M
+    "ผู้รับผิดชอบ",        // N
+    "ชื่อโรงพยาบาล",      // O
+    "รหัส 9 หลัก",       // P
+];
+
 function formatDate(date: Date | null | undefined): string {
     if (!date) return "";
-    return date.toLocaleString("en-GB", { timeZone: "Asia/Bangkok" }).replace(",", "");
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const d = new Date(date);
+    // Convert to Bangkok time (UTC+7)
+    const bkk = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+    return `${pad(bkk.getUTCDate())}/${pad(bkk.getUTCMonth() + 1)}/${bkk.getUTCFullYear()} ${pad(bkk.getUTCHours())}:${pad(bkk.getUTCMinutes())}:${pad(bkk.getUTCSeconds())}`;
 }
 
 const priorityLabels: Record<string, string> = {
@@ -56,25 +82,35 @@ async function main() {
         console.error("Cannot read first sheet name.");
         return;
     }
-    console.log(`Writing to sheet: "${firstSheet}"`);
+    console.log(`✅ Writing to sheet: "${firstSheet}"`);
 
-    // Clear data rows only (keep header row 1 as-is)
+    // --- Write header row (always overwrite row 1 to keep it correct) ---
+    console.log("Writing header row (A1:P1)...");
+    await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'${firstSheet}'!A1:P1`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [SHEET_HEADERS] },
+    });
+
+    // --- Clear data rows only (keep header row 1) ---
     console.log("Clearing old data rows (keeping header)...");
     await sheets.spreadsheets.values.clear({
         spreadsheetId,
         range: `'${firstSheet}'!A2:Z10000`,
     });
 
-    // Fetch all cases including related data
+    // --- Fetch all cases including related data ---
     console.log("Loading cases from database...");
     const cases = await prisma.$queryRaw<any[]>`
         SELECT 
             c.created_at, c.case_no, c.tracking_code, c.problem_summary, c.description,
-            c.priority, c.status, c.assignee_id,
-            r.full_name, r.phone, r.email, r.line_id,
+            c.priority, c.status,
+            r.full_name, r.phone, r.email, r.line_id, r.address,
             cat.name AS category_name,
             u.full_name AS assignee_name,
-            h.name AS hospital_name
+            h.name AS hospital_name,
+            h.code AS hospital_code
         FROM cases c
         JOIN reporters r ON c.reporter_id = r.id
         JOIN categories cat ON c.category_id = cat.id
@@ -91,24 +127,24 @@ async function main() {
         return;
     }
 
-    // A:วันที่/เวลา B:เลขที่เคส C:TrackingCode D:ชื่อผู้แจ้ง E:เบอร์โทร
-    // F:อีเมล G:LineID H:หมวดหมู่(conditional fmt) I:ระดับ J:สถานะ
-    // K:หัวข้อปัญหา L:รายละเอียด M:ผู้รับผิดชอบ N:โรงพยาบาล
+    // Build rows matching SHEET_HEADERS order exactly (A-P = 16 columns)
     const rows = cases.map((c: any) => [
-        formatDate(new Date(c.created_at)),     // A
-        c.case_no,                               // B
-        c.tracking_code,                         // C
-        c.full_name,                             // D
-        c.phone,                                 // E
-        c.email || "-",                          // F
-        c.line_id || "-",                        // G
-        c.category_name,                         // H ← conditional formatting =$H3
-        priorityLabels[c.priority] || c.priority, // I
-        statusLabels[c.status] || c.status,      // J
-        c.problem_summary,                       // K
-        c.description || "",                     // L
-        c.assignee_name || "ยังไม่มอบหมาย",       // M
-        c.hospital_name || "",                   // N
+        formatDate(new Date(c.created_at)),           // A: วันที่/เวลา
+        c.case_no,                                    // B: เลขที่เคส
+        c.tracking_code,                              // C: Tracking Code
+        c.full_name,                                  // D: ชื่อผู้แจ้ง
+        c.phone,                                      // E: เบอร์โทร
+        c.email || "-",                               // F: อีเมล
+        c.address || "-",                             // G: สถานที่/ที่อยู่
+        c.line_id || "-",                             // H: Line ID
+        c.category_name,                              // I: หมวดหมู่
+        priorityLabels[c.priority] || c.priority,    // J: ระดับ
+        statusLabels[c.status] || c.status,          // K: สถานะ
+        c.problem_summary,                            // L: หัวข้อปัญหา
+        c.description || "",                          // M: รายละเอียด
+        c.assignee_name || "ยังไม่มอบหมาย",           // N: ผู้รับผิดชอบ
+        c.hospital_name || "",                        // O: ชื่อโรงพยาบาล
+        c.hospital_code || "",                        // P: รหัส 9 หลัก
     ]);
 
     await sheets.spreadsheets.values.append({
@@ -120,6 +156,7 @@ async function main() {
     });
 
     console.log(`✅ Successfully synced ${rows.length} case(s) to Google Sheets!`);
+    console.log(`   Columns: A-P (16 columns per row)`);
     await prisma.$disconnect();
 }
 

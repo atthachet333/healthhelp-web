@@ -27,14 +27,14 @@ const auth = new google.auth.GoogleAuth({
 // ===== COLUMN LAYOUT =====
 const COL = {
     DATE: 0, CASE_NO: 1, TRACKING: 2, NAME: 3, PHONE: 4,
-    EMAIL: 5, LINE_ID: 6, CATEGORY: 7, PRIORITY: 8,
-    STATUS: 9, SUBJECT: 10, DETAIL: 11, ASSIGNEE: 12, HOSPITAL: 13, HOSP_CODE: 14,
+    EMAIL: 5, ADDRESS: 6, LINE_ID: 7, CATEGORY: 8, PRIORITY: 9,
+    STATUS: 10, SUBJECT: 11, DETAIL: 12, ASSIGNEE: 13, HOSPITAL: 14, HOSP_CODE: 15,
 };
-const TOTAL_COLS = 15; // A–O
+const TOTAL_COLS = 16; // A–P
 
 const SHEET_HEADERS = [
     "วันที่/เวลา", "เลขที่เคส", "Tracking Code",
-    "ชื่อผู้แจ้ง", "เบอร์โทร", "อีเมล", "Line ID",
+    "ชื่อผู้แจ้ง", "เบอร์โทร", "อีเมล", "สถานที่/ที่อยู่", "Line ID",
     "หมวดหมู่", "ระดับ", "สถานะ",
     "หัวข้อปัญหา", "รายละเอียด", "ผู้รับผิดชอบ", "ชื่อโรงพยาบาล", "รหัส 9 หลัก",
 ];
@@ -48,6 +48,15 @@ const hex = (h: string): RGB => ({
 });
 const WHITE: RGB = { red: 1, green: 1, blue: 1 };
 const BLACK: RGB = { red: 0, green: 0, blue: 0 };
+
+function formatDate(date: Date | null | undefined): string {
+    if (!date) return "";
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const d = new Date(date);
+    // Convert to Bangkok time (UTC+7)
+    const bkk = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+    return `${pad(bkk.getUTCDate())}/${pad(bkk.getUTCMonth() + 1)}/${bkk.getUTCFullYear()} ${pad(bkk.getUTCHours())}:${pad(bkk.getUTCMinutes())}:${pad(bkk.getUTCSeconds())}`;
+}
 
 // ===== VIVID COLOR PALETTE =====
 
@@ -207,6 +216,13 @@ async function main() {
     await styleHeader(sheets, spreadsheetId, mainSheetId, SHEET_HEADERS, hex("#1A3055"), WHITE);
     console.log("  ✅ Header styled (dark navy).");
 
+    // Clear all data rows to reset case numbering
+    await sheets.spreadsheets.values.clear({
+        spreadsheetId,
+        range: `'${mainName}'!A2:Z10000`,
+    });
+    console.log("  ✅ Data rows cleared (case numbering will restart).");
+
     // Clear old CF rules
     const mainOldCF = (mainSheet?.conditionalFormats || []).length;
     await clearConditionalFormats(sheets, spreadsheetId, mainSheetId, mainOldCF);
@@ -260,6 +276,35 @@ async function main() {
                 },
             });
             console.log("  ✅ Data rows styled (light grey background).");
+
+            // Update date/time column to current date/time for rows with data
+            const attData = await sheets.spreadsheets.values.get({
+                spreadsheetId,
+                range: `'${attName}'!A2:E1000`,
+            });
+            const rows = attData.data.values || [];
+            const currentDate = formatDate(new Date());
+            const updates = [];
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i] && rows[i][1]) { // if Case ID (column B) exists
+                    updates.push({
+                        range: `'${attName}'!A${i + 2}`,
+                        values: [[currentDate]],
+                    });
+                }
+            }
+            if (updates.length > 0) {
+                await sheets.spreadsheets.values.batchUpdate({
+                    spreadsheetId,
+                    requestBody: {
+                        valueInputOption: "USER_ENTERED",
+                        data: updates,
+                    },
+                });
+                console.log(`  ✅ Date/time updated for ${updates.length} attachment row(s).`);
+            } else {
+                console.log("  ℹ️  No attachment data found to update dates.");
+            }
 
             // Remove old CF on attachments sheet
             const attOldCF = (attSheet?.conditionalFormats || []).length;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { loginAction } from "@/app/actions/admin-actions";
 import { HeartPulse, Loader2, AlertCircle, Lock, Mail, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -24,10 +25,12 @@ export default function AdminLoginPage() {
         setLoading(false);
 
         if (result.success && result.user) {
+            toast.success("เข้าสู่ระบบสำเร็จ");
             // Store session in localStorage (simplified auth for demo)
             localStorage.setItem("healthhelp_user", JSON.stringify(result.user));
             router.push("/admin/dashboard");
         } else {
+            toast.error(result.error || "รหัสผ่านหรืออีเมลไม่ถูกต้อง");
             setError(result.error || "เกิดข้อผิดพลาด");
         }
     }

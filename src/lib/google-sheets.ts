@@ -8,21 +8,22 @@ const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
  * If you add/remove/reorder columns in sheetData, update THIS map.
  */
 export const SHEET_COLUMNS = {
-    DATE: 0,  // A — วันที่/เวลา
-    CASE_NO: 1,  // B — เลขที่เคส
-    TRACKING: 2,  // C — Tracking Code
-    NAME: 3,  // D — ชื่อผู้แจ้ง
-    PHONE: 4,  // E — เบอร์โทร
-    EMAIL: 5,  // F — อีเมล
-    LINE_ID: 6,  // G — Line ID
-    CATEGORY: 7,  // H — หมวดหมู่
-    PRIORITY: 8,  // I — ระดับ
-    STATUS: 9,  // J — สถานะ
-    SUBJECT: 10,  // K — หัวข้อปัญหา
-    DETAIL: 11,  // L — รายละเอียด
-    ASSIGNEE: 12,  // M — ผู้รับผิดชอบ
-    HOSPITAL: 13,  // N — ชื่อโรงพยาบาล
-    HOSP_CODE: 14, // O — รหัส 9 หลัก
+    DATE: 0,  // A
+    CASE_NO: 1,  // B
+    TRACKING: 2,  // C
+    NAME: 3,  // D
+    PHONE: 4,  // E
+    EMAIL: 5,  // F
+    ADDRESS: 6, // G - ที่อยู่
+    LINE_ID: 7,  // H
+    CATEGORY: 8,  // I
+    PRIORITY: 9,  // J
+    STATUS: 10,  // K
+    SUBJECT: 11,  // L
+    DETAIL: 12,  // M
+    ASSIGNEE: 13,  // N
+    HOSPITAL: 14,  // O
+    HOSP_CODE: 15, // P
 } as const;
 
 /** Human-readable headers matching each column in SHEET_COLUMNS order */
@@ -33,15 +34,16 @@ export const SHEET_HEADERS = [
     "ชื่อผู้แจ้ง",     // D
     "เบอร์โทร",       // E
     "อีเมล",          // F
-    "Line ID",        // G
-    "หมวดหมู่",        // H
-    "ระดับ",           // I
-    "สถานะ",          // J
-    "หัวข้อปัญหา",     // K
-    "รายละเอียด",      // L
-    "ผู้รับผิดชอบ",     // M
-    "ชื่อโรงพยาบาล",       // N
-    "รหัส 9 หลัก",    // O
+    "สถานที่/ที่อยู่",    // G
+    "Line ID",        // H
+    "หมวดหมู่",        // I
+    "ระดับ",           // J
+    "สถานะ",          // K
+    "หัวข้อปัญหา",     // L
+    "รายละเอียด",      // M
+    "ผู้รับผิดชอบ",     // N
+    "ชื่อโรงพยาบาล",       // O
+    "รหัส 9 หลัก",    // P
 ];
 
 /** Convert a 0-based column index to a spreadsheet letter (0→A, 1→B, …) */
@@ -124,8 +126,15 @@ export async function appendToSheet(rowData: unknown[]) {
         // Format dates to strings if any
         const formattedData = rowData.map(val => {
             if (val instanceof Date) {
-                // Return DD/MM/YYYY HH:mm:ss format in Gregorian calendar (Asia/Bangkok)
-                return val.toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }).replace(",", "");
+                // Return DD/MM/YYYY HH:mm:ss format 
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                const d = val.getUTCDate();
+                const m = val.getUTCMonth() + 1;
+                const y = val.getUTCFullYear();
+                const hh = pad(val.getUTCHours());
+                const mm = pad(val.getUTCMinutes());
+                const ss = pad(val.getUTCSeconds());
+                return `${pad(d)}/${pad(m)}/${y} ${hh}:${mm}:${ss}`;
             }
             if (val === null || val === undefined) {
                 return "";
@@ -378,7 +387,14 @@ export async function appendAttachmentToSheet(rowData: unknown[]) {
         // Format dates to strings if any
         const formattedData = rowData.map(val => {
             if (val instanceof Date) {
-                return val.toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' }).replace(",", "");
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                const d = val.getUTCDate();
+                const m = val.getUTCMonth() + 1;
+                const y = val.getUTCFullYear();
+                const hh = pad(val.getUTCHours());
+                const mm = pad(val.getUTCMinutes());
+                const ss = pad(val.getUTCSeconds());
+                return `${pad(d)}/${pad(m)}/${y} ${hh}:${mm}:${ss}`;
             }
             if (val === null || val === undefined) return "";
             return String(val);
