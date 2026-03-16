@@ -58,6 +58,10 @@ const toneMap = {
     amber: "from-amber-500/20 to-amber-500/5 border-amber-500/20 text-amber-300",
     rose: "from-rose-500/20 to-rose-500/5 border-rose-500/20 text-rose-300",
     sky: "from-sky-500/20 to-sky-500/5 border-sky-500/20 text-sky-300",
+    blue: "bg-blue-500",
+    violet: "bg-violet-500",
+    emeraldSolid: "bg-emerald-500",
+    roseSolid: "bg-rose-500",
 } as const;
 
 export default function TicketDashboardMockup() {

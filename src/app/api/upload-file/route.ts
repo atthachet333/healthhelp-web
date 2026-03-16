@@ -74,7 +74,8 @@ export async function POST(request: Request) {
             caseNo,
             caseRecord.reporter.phone,
             file.name,
-            fileUrl // In a real production app with a domain, this should be the full absolute URL e.g., https://yourdomain.com/uploads/...
+            fileUrl, // In a real production app with a domain, this should be the full absolute URL e.g., https://yourdomain.com/uploads/...
+            caseRecord.reporter.fullName, // ผู้ส่ง (ผู้ใช้งานที่อัปโหลดไฟล์)
         ];
 
         appendAttachmentToSheet(sheetData).catch(e => console.error(e));

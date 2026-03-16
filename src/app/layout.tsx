@@ -24,7 +24,27 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              fontSize: "1.0625rem",
+              fontWeight: "600",
+              padding: "1rem 1.25rem",
+              borderRadius: "0.875rem",
+              maxWidth: "420px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+              lineHeight: "1.5",
+            },
+            success: {
+              iconTheme: { primary: "#22c55e", secondary: "#fff" },
+            },
+            error: {
+              iconTheme: { primary: "#ef4444", secondary: "#fff" },
+            },
+          }}
+        />
         {children}
       </body>
     </html>

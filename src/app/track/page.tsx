@@ -16,15 +16,37 @@ import {
     Loader2,
     Phone,
     FileText,
-    Paperclip,
-    X,
     ImageIcon,
     Send,
 } from "lucide-react";
 import { getStatusLabel, getStatusColor, getPriorityLabel, getPriorityColor, formatDateTime } from "@/lib/utils";
 
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+    return (
+        <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+            onClick={onClose}
+        >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={alt}
+                className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            />
+            <button
+                onClick={onClose}
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-xl font-bold transition-colors"
+            >
+                ✕
+            </button>
+        </div>
+    );
+}
+
 export default function TrackPage() {
     const [mode, setMode] = useState<"search" | "result" | "history">("search");
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
     const [searchType, setSearchType] = useState<"tracking" | "phone">("tracking");
     const [searchValue, setSearchValue] = useState("");
     const [loading, setLoading] = useState(false);
@@ -72,42 +94,43 @@ export default function TrackPage() {
     }
 
     async function handleUserReply() {
-        if (!caseData || !userReply.trim()) return;
+        if (!caseData || (!userReply.trim() && userFiles.length === 0)) return;
         setSubmittingReply(true);
-        const res = await addPublicCaseUpdate(caseData.trackingCode, userReply, []);
+
+        let uploadedAttachments: any[] = [];
+
+        // ถ้ามีไฟล์ ให้ upload ก่อน แล้วค่อยสร้างข้อความเดียวที่มีทั้งข้อความและไฟล์ (เหมือนแชท)
+        if (userFiles.length > 0) {
+            setUploadingUserFiles(true);
+            try {
+                const formData = new FormData();
+                userFiles.forEach((f) => formData.append("files", f));
+                const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                if (!uploadRes.ok) throw new Error("upload failed");
+                const uploadData = await uploadRes.json();
+                uploadedAttachments = (uploadData.files || []).map((f: any) => ({
+                    ...f,
+                    fileSize: f.fileSize || 0,
+                }));
+            } catch {
+                setError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
+                setSubmittingReply(false);
+                setUploadingUserFiles(false);
+                return;
+            }
+            setUploadingUserFiles(false);
+        }
+
+        const res = await addPublicCaseUpdate(caseData.trackingCode, userReply, uploadedAttachments);
         if (res.success) {
             setUserReply("");
+            setUserFiles([]);
             const data = await getCaseByTracking(caseData.trackingCode);
             if (data) setCaseData(data);
         } else {
             setError(res.error || "เกิดข้อผิดพลาดในการส่งข้อความ");
         }
         setSubmittingReply(false);
-    }
-
-    /* ========= ส่งไฟล์เป็น bubble ใหม่แยก ========= */
-    async function handleSendFileOnly(files: File[]) {
-        if (!caseData || files.length === 0) return;
-        setUploadingUserFiles(true);
-        try {
-            const formData = new FormData();
-            files.forEach(f => formData.append("files", f));
-            const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!uploadRes.ok) throw new Error("upload failed");
-            const uploadData = await uploadRes.json();
-            const uploadedAttachments = (uploadData.files || []).map((f: any) => ({ ...f, fileSize: f.fileSize || 0 }));
-            const res = await addPublicCaseUpdate(caseData.trackingCode, "", uploadedAttachments);
-            if (res.success) {
-                setUserFiles([]);
-                const data = await getCaseByTracking(caseData.trackingCode);
-                if (data) setCaseData(data);
-            } else {
-                setError(res.error || "เกิดข้อผิดพลาด");
-            }
-        } catch (err) {
-            setError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
-        }
-        setUploadingUserFiles(false);
     }
 
     async function handleCSAT() {
@@ -122,23 +145,29 @@ export default function TrackPage() {
         }
     }
 
-    function getActionIcon(actionType: string) {
-        switch (actionType) {
-            case "SYSTEM": return <CheckCircle2 className="w-4 h-4 text-blue-400" />;
-            case "STATUS_CHANGE": return <AlertCircle className="w-4 h-4 text-yellow-400" />;
-            case "ASSIGN": return <User className="w-4 h-4 text-green-400" />;
-            case "COMMENT": return <MessageCircle className="w-4 h-4 text-indigo-400" />;
-            default: return <Clock className="w-4 h-4 text-gray-400" />;
-        }
-    }
+    const heroTitle = mode === "search" ? "ติดตามเคส" : mode === "history" ? "ประวัติการแจ้ง" : "รายละเอียดเคส";
+    const heroSubtitle = mode === "search"
+        ? "ค้นหาสถานะเคสด้วยรหัสติดตามหรือเบอร์โทรศัพท์"
+        : mode === "history"
+            ? "ตรวจสอบรายการเคสที่เคยแจ้งไว้จากเบอร์โทรศัพท์"
+            : "ติดตามความคืบหน้า พูดคุยกับเจ้าหน้าที่ และดูสถานะล่าสุด";
 
     return (
-        <div className="theme-light min-h-screen">
+        <div className="theme-light flex flex-col min-h-screen w-full relative">
+            <div className="fixed inset-0 z-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50/30" />
+            {/* Lightbox */}
+            {lightboxSrc && (
+                <ImageLightbox
+                    src={lightboxSrc}
+                    alt="รูปขยาย"
+                    onClose={() => setLightboxSrc(null)}
+                />
+            )}
             {/* Header */}
-            <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-slate-200/50 shadow-sm">
+            <header className="sticky top-0 z-50 backdrop-blur-md bg-white/85 border-b border-slate-200/60 shadow-sm w-full">
                 <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm shadow-blue-600/20">
                             <HeartPulse className="w-5 h-5 text-white" />
                         </div>
                         <h1 className="text-lg font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">HealthHelp</h1>
@@ -166,23 +195,42 @@ export default function TrackPage() {
                 </div>
             </header>
 
-            <main className="w-full flex-grow flex flex-col min-h-[calc(100vh-73px)]">
+            <main className="flex-grow flex flex-col items-center w-full relative z-10">
+                <div className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 relative overflow-hidden">
+                    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-8 md:py-10 relative">
+                        <div className="text-center">
+                            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                                {heroTitle}
+                            </h2>
+                            <p className="text-blue-100/90 text-sm sm:text-base mx-auto text-center">
+                                {heroSubtitle}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 -mt-4 pb-12 relative z-20">
                 {mode === "search" && (
-                    <div className="w-full h-full flex-grow flex flex-col items-center justify-start px-6 sm:px-10 pt-10 sm:pt-20 pb-20 bg-white/40 backdrop-blur-md min-h-[calc(100vh-73px)]">
-                        <div className="w-full max-w-2xl mx-auto text-center flex flex-col items-center justify-start flex-grow mt-4 sm:mt-10">
-                            <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 shadow-md">
-                                <Search className="w-8 h-8 text-white" />
+                    <div className="w-full flex justify-center pt-2 sm:pt-4">
+                        <div className="w-full max-w-3xl mx-auto bg-white rounded-xl shadow-md border border-slate-200/80 overflow-hidden">
+                            <div className="bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b border-slate-200/80 px-5 sm:px-6 py-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                        <Search className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-800">ค้นหาสถานะเคส</h3>
+                                        <p className="text-slate-500 text-xs">ค้นหาด้วยรหัสติดตามหรือเบอร์โทรศัพท์</p>
+                                    </div>
+                                </div>
                             </div>
-                            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3 px-4 w-full">ติดตามสถานะเคส</h2>
-                            <p className="text-sm sm:text-base text-slate-600 mb-8 px-4 w-full">ค้นหาเคสด้วยรหัสติดตามหรือเบอร์โทรศัพท์</p>
 
-                            <form onSubmit={handleSearch} className="w-full">
+                            <form onSubmit={handleSearch} className="w-full p-5 sm:p-6">
                                 {/* Search Type Tabs */}
-                                <div className="flex gap-2 mb-6 bg-slate-100 p-1.5 rounded-xl w-full">
+                                <div className="flex gap-2 mb-6 bg-slate-100 p-2 rounded-2xl w-full">
                                     <button
                                         type="button"
                                         onClick={() => { setSearchType("tracking"); setSearchValue(""); setError(""); }}
-                                        className={`flex-1 py-3 px-4 rounded-lg text-sm sm:text-base font-semibold transition-all shadow-sm ${searchType === "tracking" ? "bg-white text-indigo-600 ring-1 ring-black/5 shadow-md flex items-center justify-center gap-2" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 flex items-center justify-center gap-2"
+                                        className={`flex-1 py-3.5 px-4 rounded-xl text-base font-semibold transition-all flex items-center justify-center gap-2 ${searchType === "tracking" ? "bg-white text-indigo-600 shadow-md" : "text-slate-500 hover:text-slate-700"
                                             }`}
                                     >
                                         🔑 รหัสติดตาม
@@ -190,10 +238,10 @@ export default function TrackPage() {
                                     <button
                                         type="button"
                                         onClick={() => { setSearchType("phone"); setSearchValue(""); setError(""); }}
-                                        className={`flex-1 py-3 px-4 rounded-lg text-sm sm:text-base font-semibold transition-all shadow-sm ${searchType === "phone" ? "bg-white text-indigo-600 ring-1 ring-black/5 shadow-md flex items-center justify-center gap-2" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 flex items-center justify-center gap-2"
+                                        className={`flex-1 py-3.5 px-4 rounded-xl text-base font-semibold transition-all flex items-center justify-center gap-2 ${searchType === "phone" ? "bg-white text-indigo-600 shadow-md" : "text-slate-500 hover:text-slate-700"
                                             }`}
                                     >
-                                        <Phone className="w-4 h-4" />
+                                        <Phone className="w-5 h-5" />
                                         เบอร์โทรศัพท์
                                     </button>
                                 </div>
@@ -202,21 +250,21 @@ export default function TrackPage() {
                                     <input
                                         value={searchValue}
                                         onChange={(e) => setSearchValue(e.target.value)}
-                                        className="input-field text-center text-lg sm:text-xl py-4 sm:py-5 tracking-widest font-mono w-full shadow-inner rounded-xl"
+                                        className="input-field text-center text-xl sm:text-2xl py-5 sm:py-6 tracking-widest font-mono w-full shadow-inner rounded-2xl"
                                         placeholder={searchType === "tracking" ? "เช่น ABC12345" : "เช่น 0812345678"}
                                         style={{ letterSpacing: searchType === "tracking" ? "0.15em" : "normal" }}
                                     />
                                 </div>
                                 {error && (
-                                    <p className="text-red-500 text-sm mt-3 flex items-center justify-center gap-1">
+                                    <p className="text-red-500 text-base mt-4 flex items-center justify-center gap-2">
                                         <AlertCircle className="w-4 h-4" />
                                         {error}
                                     </p>
                                 )}
                                 <div className="w-full">
-                                    <button type="submit" disabled={loading} className="btn-primary w-full mt-6 py-4 sm:py-5 text-lg font-bold shadow-md shadow-indigo-200 hover:shadow-indigo-300 transition-all rounded-xl flex items-center justify-center gap-2">
-                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                                        {loading ? "กำลังค้นหา..." : "ค้นหา"}
+                                    <button type="submit" disabled={loading} className="btn-primary w-full mt-6 py-5 sm:py-6 text-xl font-bold shadow-md shadow-indigo-200 hover:shadow-indigo-300 transition-all rounded-2xl flex items-center justify-center gap-3">
+                                        {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Search className="w-6 h-6" />}
+                                        {loading ? "กำลังค้นหา..." : "ค้นหาเคส"}
                                     </button>
                                 </div>
                             </form>
@@ -225,49 +273,49 @@ export default function TrackPage() {
                 )}
 
                 {mode === "result" && caseData && (
-                    <div className="w-full h-full flex-grow flex flex-col items-center justify-start px-2 sm:px-6 md:px-10 pt-8 sm:pt-14 pb-20 bg-white/40 backdrop-blur-md min-h-[calc(100vh-73px)]">
-                        <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col">
+                    <div className="w-full flex justify-center pt-2 sm:pt-4">
+                        <div className="w-full max-w-4xl mx-auto flex flex-col">
                             <div className="flex justify-end mb-4 sm:mb-6">
-                                <button onClick={() => { setMode("search"); setCaseData(null); }} className="btn-secondary text-sm bg-white hover:bg-slate-50 border-slate-300 px-6 shadow-sm">
-                                    <ArrowLeft className="w-4 h-4" />
+                                <button onClick={() => { setMode("search"); setCaseData(null); }} className="btn-secondary text-base bg-white hover:bg-slate-50 border-slate-300 px-6 shadow-sm">
+                                    <ArrowLeft className="w-5 h-5" />
                                     ค้นหาใหม่
                                 </button>
                             </div>
 
                             {/* Case Header */}
-                            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 w-full">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8 pb-6 border-b border-slate-100">
+                            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 sm:p-8 mb-5 w-full">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-5 border-b border-slate-100">
                                     <div>
-                                        <p className="text-sm font-medium text-slate-500 mb-1">เลขที่เคส</p>
+                                        <p className="text-base font-semibold text-slate-500 mb-1">เลขที่เคส</p>
                                         <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{caseData.caseNo}</h3>
                                     </div>
-                                    <span className={`badge ${getStatusColor(caseData.status)} text-sm px-5 py-2 rounded-full font-bold shadow-sm`}>
+                                    <span className={`badge ${getStatusColor(caseData.status)} text-base px-5 py-2 rounded-xl font-bold shadow-sm`}>
                                         {getStatusLabel(caseData.status)}
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div className="bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-slate-500 font-medium mb-1">ประเภท</p>
-                                        <p className="font-bold text-slate-800">{caseData.category?.name}</p>
+                                        <p className="text-slate-500 text-sm font-semibold mb-1.5">ประเภท</p>
+                                        <p className="font-bold text-slate-800 text-base leading-snug">{caseData.category?.name}</p>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-slate-500 font-medium mb-1">ระดับความเร่งด่วน</p>
-                                        <span className={`badge ${getPriorityColor(caseData.priority)} text-xs px-3 py-1 mt-1 block w-max`}>
+                                        <p className="text-slate-500 text-sm font-semibold mb-1.5">ความเร่งด่วน</p>
+                                        <span className={`badge ${getPriorityColor(caseData.priority)} text-sm mt-1 block w-max`}>
                                             {getPriorityLabel(caseData.priority)}
                                         </span>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-slate-500 font-medium mb-1">วันที่แจ้ง</p>
-                                        <p className="font-bold text-slate-800">{formatDateTime(caseData.createdAt)}</p>
+                                        <p className="text-slate-500 text-sm font-semibold mb-1.5">วันที่แจ้ง</p>
+                                        <p className="font-bold text-slate-800 text-sm leading-snug">{formatDateTime(caseData.createdAt)}</p>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-slate-500 font-medium mb-1">ผู้รับผิดชอบ</p>
-                                        <p className="font-bold text-slate-800">{caseData.assignee?.fullName || "รอมอบหมาย"}</p>
+                                        <p className="text-slate-500 text-sm font-semibold mb-1.5">ผู้รับผิดชอบ</p>
+                                        <p className="font-bold text-slate-800 text-base leading-snug">{caseData.assignee?.fullName || "รอมอบหมาย"}</p>
                                     </div>
                                 </div>
-                                <div className="mt-8 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100/50">
-                                    <p className="text-indigo-900/60 text-sm font-bold mb-2 uppercase tracking-wider">หัวข้อปัญหา</p>
-                                    <p className="text-slate-900 font-bold text-lg mb-2">{caseData.problemSummary}</p>
+                                <div className="mt-5 bg-indigo-50/60 p-5 rounded-2xl border border-indigo-100/60">
+                                    <p className="text-indigo-600 text-sm font-bold mb-2 uppercase tracking-wider">หัวข้อปัญหา</p>
+                                    <p className="text-slate-900 font-bold text-lg mb-2 leading-snug">{caseData.problemSummary}</p>
                                     {caseData.description && (
                                         <p className="text-slate-600 text-base leading-relaxed">{caseData.description}</p>
                                     )}
@@ -275,13 +323,13 @@ export default function TrackPage() {
                             </div>
 
                             {/* Timeline */}
-                            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 w-full">
+                            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5 sm:p-7 mb-5 w-full">
                                 {/* ── Conversation Timeline ── */}
                                 <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
                                     {/* Header */}
-                                    <div className="bg-gradient-to-r from-indigo-600 to-teal-600 px-5 py-3 flex items-center gap-2">
-                                        <Clock className="w-5 h-5 text-white" />
-                                        <h4 className="text-base font-bold text-white tracking-wide">การสนทนาและไทม์ไลน์</h4>
+                                    <div className="bg-gradient-to-r from-indigo-600 to-teal-600 px-6 py-4 flex items-center gap-3">
+                                        <Clock className="w-6 h-6 text-white shrink-0" />
+                                        <h4 className="text-lg font-bold text-white tracking-wide">การสนทนาและไทม์ไลน์</h4>
                                     </div>
                                     {/* Messages area */}
                                     <div className="bg-slate-50 p-4 space-y-6">
@@ -294,8 +342,6 @@ export default function TrackPage() {
                                     }).map((u: any, i: number) => {
                                         const isUserReply = !u.user && u.actionType === "COMMENT";
                                         const isSystem = !u.user && u.actionType !== "COMMENT";
-                                        const isAdmin = !!u.user;
-
                                         // ── ผู้แจ้ง (ขวา) ─────────────────────────────────────
                                         if (isUserReply) {
                                             return (
@@ -310,28 +356,32 @@ export default function TrackPage() {
                                                         </div>
                                                         {/* Bubble */}
                                                         <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-none px-5 py-4 shadow-lg border-2 border-indigo-700">
-                                                            <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>
+                                                            {u.note && <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>}
                                                             {u.attachments && u.attachments.length > 0 && (
                                                                 <div className="mt-3 flex flex-col gap-2">
                                                                     {u.attachments.map((file: any, idx: number) => (
-                                                                        <a
-                                                                            key={idx}
-                                                                            href={file.fileUrl}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="flex items-center gap-2 text-xs bg-indigo-800/50 hover:bg-indigo-700/50 text-indigo-100 px-3 py-2 rounded-lg border border-indigo-500/30 transition-colors w-fit max-w-[200px]"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        >
-                                                                            {file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i) ? (
-                                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                                <img src={file.fileUrl} alt={file.fileName} className="mt-1 max-w-[150px] max-h-[150px] object-cover rounded shadow" />
-                                                                            ) : (
-                                                                                <>
-                                                                                    <FileText className="w-4 h-4 shrink-0" />
-                                                                                    <span className="truncate">{file.fileName}</span>
-                                                                                </>
-                                                                            )}
-                                                                        </a>
+                                                                        file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                                            <img
+                                                                                key={idx}
+                                                                                src={file.fileUrl}
+                                                                                alt={file.fileName}
+                                                                                className="mt-1 max-w-[220px] max-h-[220px] object-cover rounded-xl shadow-md cursor-zoom-in hover:opacity-90 transition-opacity"
+                                                                                onClick={() => setLightboxSrc(file.fileUrl)}
+                                                                            />
+                                                                        ) : (
+                                                                            <a
+                                                                                key={idx}
+                                                                                href={file.fileUrl}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="flex items-center gap-2 text-xs bg-indigo-800/50 hover:bg-indigo-700/50 text-indigo-100 px-3 py-2 rounded-lg border border-indigo-500/30 transition-colors w-fit"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                            >
+                                                                                <FileText className="w-4 h-4 shrink-0" />
+                                                                                <span className="truncate max-w-[200px]">{file.fileName}</span>
+                                                                            </a>
+                                                                        )
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -389,14 +439,15 @@ export default function TrackPage() {
                                                             {u.attachments && u.attachments.length > 0 && (
                                                                 <div className="mt-3 flex flex-col gap-2">
                                                                     {u.attachments.map((file: any, idx: number) => {
-                                                                        if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                                                                        if (file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
                                                                             return (
                                                                                 // eslint-disable-next-line @next/next/no-img-element
                                                                                 <img
                                                                                     key={idx}
                                                                                     src={file.fileUrl}
                                                                                     alt={file.fileName}
-                                                                                    className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-black/20 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                                    className="max-w-[220px] max-h-[220px] object-cover rounded-xl shadow-md border border-black/20 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                                                                    onClick={() => setLightboxSrc(file.fileUrl)}
                                                                                 />
                                                                             );
                                                                         } else if (file.fileUrl.match(/\.pdf$/i)) {
@@ -446,7 +497,7 @@ export default function TrackPage() {
                                             <h4 className="text-base font-bold text-white">ตอบกลับ / ให้ข้อมูลเพิ่มเติม</h4>
                                         </div>
                                         <div className="p-4">
-                                            {/* Text area + Send text button */}
+                                            {/* Text area + Send button */}
                                             <div className="flex gap-2 items-end mb-3">
                                                 <textarea
                                                     value={userReply}
@@ -456,31 +507,63 @@ export default function TrackPage() {
                                                 />
                                                 <button
                                                     onClick={handleUserReply}
-                                                    disabled={!userReply.trim() || submittingReply}
-                                                    className="btn-primary px-5 py-3 text-base font-bold flex items-center gap-2 self-end disabled:opacity-50 min-h-[52px]"
+                                                    disabled={(!userReply.trim() && userFiles.length === 0) || submittingReply || uploadingUserFiles}
+                                                    className="btn-primary px-6 py-3.5 text-lg font-bold flex items-center gap-2 self-end disabled:opacity-50 min-h-[56px] rounded-2xl"
                                                 >
                                                     {submittingReply ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                                                     ส่ง
                                                 </button>
                                             </div>
 
+                                            {/* แสดงไฟล์ที่เลือกแนบ (preview) */}
+                                            {userFiles.length > 0 && (
+                                                <div className="mb-3 flex flex-wrap gap-3">
+                                                    {userFiles.map((f, idx) => (
+                                                        <div key={idx} className="relative group">
+                                                            {f.type.startsWith("image/") ? (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img
+                                                                    src={URL.createObjectURL(f)}
+                                                                    alt={f.name}
+                                                                    className="w-16 h-16 object-cover rounded-lg border border-indigo-200 shadow-sm"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-16 h-16 bg-indigo-50 rounded-lg border border-indigo-200 flex flex-col items-center justify-center gap-1">
+                                                                    <FileText className="w-4 h-4 text-indigo-400" />
+                                                                    <span className="text-[9px] text-indigo-700 px-1 text-center truncate w-full">
+                                                                        {f.name}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setUserFiles(prev => prev.filter((_, i) => i !== idx))}
+                                                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
                                             {/* Divider */}
-                                            <div className="flex items-center gap-3 my-3">
+                                            <div className="flex items-center gap-3 my-4">
                                                 <hr className="flex-1 border-indigo-200" />
-                                                <span className="text-xs text-indigo-400 font-semibold">หรือแนบรูป / ไฟล์</span>
+                                                <span className="text-sm text-indigo-400 font-semibold">หรือแนบรูป / ไฟล์</span>
                                                 <hr className="flex-1 border-indigo-200" />
                                             </div>
 
-                                            {/* File-only send: pick & instantly send as separate bubble */}
-                                            <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer transition-all font-semibold text-sm select-none ${
+                                            {/* เลือกไฟล์แนบ */}
+                                            <label className={`flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed rounded-2xl cursor-pointer transition-all font-semibold text-base select-none ${
                                                 uploadingUserFiles
                                                     ? "border-indigo-300 bg-indigo-100 text-indigo-400 pointer-events-none"
                                                     : "border-indigo-400 bg-white text-indigo-600 hover:bg-indigo-50 hover:border-indigo-500"
                                             }`}>
                                                 {uploadingUserFiles ? (
-                                                    <><Loader2 className="w-4 h-4 animate-spin" /> กำลังอัปโหลด...</>
+                                                    <><Loader2 className="w-5 h-5 animate-spin" /> กำลังอัปโหลด...</>
                                                 ) : (
-                                                    <><ImageIcon className="w-4 h-4" /> 📎 แนบรูป / ไฟล์ (ส่งเป็นข้อความใหม่ทันที)</>
+                                                    <><ImageIcon className="w-5 h-5" /> 📎 แนบรูป / ไฟล์</>
                                                 )}
                                                 <input
                                                     type="file"
@@ -491,7 +574,7 @@ export default function TrackPage() {
                                                     onChange={(e) => {
                                                         if (e.target.files && e.target.files.length > 0) {
                                                             const files = Array.from(e.target.files);
-                                                            handleSendFileOnly(files);
+                                                            setUserFiles(prev => [...prev, ...files]);
                                                         }
                                                         e.target.value = '';
                                                     }}
@@ -559,8 +642,8 @@ export default function TrackPage() {
                 )}
 
                 {mode === "history" && (
-                    <div className="w-full h-full flex-grow flex flex-col items-center justify-start px-6 sm:px-10 pt-10 sm:pt-14 pb-20 bg-white/40 backdrop-blur-md min-h-[calc(100vh-73px)]">
-                        <div className="max-w-7xl mx-auto w-full flex-grow flex flex-col">
+                    <div className="w-full flex justify-center pt-2 sm:pt-4">
+                        <div className="w-full max-w-7xl mx-auto flex flex-col">
                             <div className="flex justify-end mb-4 sm:mb-6">
                                 <button onClick={() => { setMode("search"); setCaseList([]); }} className="btn-secondary text-sm bg-white hover:bg-slate-50 border-slate-300 shadow-sm">
                                     <ArrowLeft className="w-4 h-4" />
@@ -601,7 +684,24 @@ export default function TrackPage() {
                         </div>
                     </div>
                 )}
+                </div>
             </main>
+            <footer className="w-full bg-slate-900 text-slate-400 relative z-10">
+                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-6">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                                <HeartPulse className="w-3.5 h-3.5 text-white" />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-300">HealthHelp</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">© 2026 HealthHelp - ศูนย์เทคโนโลยีสารสนเทศและการสื่อสาร</p>
+                        <Link href="/admin/login" className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors">
+                            เจ้าหน้าที่ →
+                        </Link>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }

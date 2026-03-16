@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { CaseStatus, ActionType, Priority, Role } from "@prisma/client";
 import { compare } from "bcryptjs";
+import { revalidatePath } from "next/cache";
 import { updateSheetCaseStatus, updateSheetAssignee, appendAttachmentToSheet } from "@/lib/google-sheets";
 import { getStatusLabel } from "@/lib/utils";
 
@@ -156,10 +157,10 @@ export async function getDashboardMetrics(timeFilter: "DAY" | "MONTH" | "YEAR" =
             where: { assigneeId: { not: null } },
             _count: true,
         });
-        const users = await prisma.user.findMany({ where: { role: { in: [Role.STAFF, Role.SUPERVISOR] } } });
+        const users = await prisma.user.findMany({ where: { role: { in: [Role.ADMIN, Role.STAFF, Role.SUPERVISOR] } } });
         const userMap = Object.fromEntries(users.map((u) => [u.id, u.fullName]));
         const staffStats = staffPerformance.map((s) => ({
-            name: userMap[s.assigneeId!] || "สมชาย ผู้ดูแลระบบ",
+            name: userMap[s.assigneeId!] || "ไม่ระบุ",
             cases: s._count,
         }));
 
@@ -270,7 +271,7 @@ export async function addCaseUpdate(
     note: string, 
     newStatus?: string, 
     isPublic?: boolean,
-    attachments?: { fileName: string; fileUrl: string; fileKey: string; fileType?: string }[]
+    attachments?: { fileName: string; fileUrl: string; fileKey?: string; fileType?: string }[]
 ) {
     try {
         const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -324,7 +325,6 @@ export async function addCaseUpdate(
                     create: attachments.map(att => ({
                         fileName: att.fileName,
                         fileUrl: att.fileUrl,
-                        fileKey: att.fileKey,
                         fileType: att.fileType || "application/octet-stream",
                     }))
                 } : undefined,
@@ -339,7 +339,8 @@ export async function addCaseUpdate(
                     caseData.caseNo,
                     caseData.reporter?.phone || "-",
                     att.fileName,
-                    att.fileUrl 
+                    att.fileUrl,
+                    user.fullName, // ผู้ส่ง = เจ้าหน้าที่ที่อัปโหลดไฟล์/แนบไฟล์
                 ];
                 appendAttachmentToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
             }
@@ -355,6 +356,9 @@ export async function addCaseUpdate(
                 metadata: { note, oldValue, newValue },
             },
         });
+
+        // Revalidate page cache so router.refresh() shows new data immediately
+        revalidatePath(`/admin/cases/${caseId}`);
 
         return { success: true };
     } catch (error) {
