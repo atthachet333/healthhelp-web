@@ -3,6 +3,14 @@
 ระบบ Helpdesk Web Application ครบวงจร สร้างด้วย Next.js 14, Prisma ORM, PostgreSQL
 รองรับภาษาไทย, Dark Mode, Responsive Design
 
+## Dashboard Mockup ล่าสุด
+
+เปิดดูไฟล์ mockup ได้ทันทีจากลิงก์นี้:
+
+- [mockup/TicketDashboardMockup.tsx](./mockup/TicketDashboardMockup.tsx)
+
+ไฟล์นี้เป็น mockup หน้า Dashboard สำหรับระบบจัดการ Ticket ที่ออกแบบจากโทน UI ของระบบปัจจุบัน เพื่อใช้ดูแนวทางหน้าตาและนำไปต่อยอดได้ทันที
+
 ## คู่มือการใช้งาน
 
 เปิดอ่านเอกสารได้จากลิงก์ด้านล่าง:
