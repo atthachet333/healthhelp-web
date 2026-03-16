@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     Search, ChevronLeft, ChevronRight, Eye,
-    UserPlus,
+    UserPlus, Download
 } from "lucide-react";
 import { getStatusLabel, getStatusColor, getPriorityLabel, getPriorityColor, formatDateTime } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { assignCase } from "@/app/actions/admin-actions";
+import { ImportCasesModal } from "./ImportCasesModal";
+import * as XLSX from "xlsx";
+import { toast } from "react-hot-toast";
 
 interface CaseItem {
     id: string;
@@ -53,6 +56,7 @@ export function CaseListClient({
     const router = useRouter();
     const [assigningId, setAssigningId] = useState<string | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     useEffect(() => {
         const stored = localStorage.getItem("healthhelp_user");
@@ -91,6 +95,39 @@ export function CaseListClient({
         router.refresh();
     }
 
+    function handleExport() {
+        if (!cases || cases.length === 0) {
+            toast.error("ไม่มีข้อมูลสำหรับส่งออก");
+            return;
+        }
+
+        try {
+            const dataToExport = cases.map((c) => ({
+                "Case No": c.caseNo,
+                "ปัญหา": c.problemSummary,
+                "หมวดหมู่": c.category.name,
+                "สถานะ": getStatusLabel(c.status),
+                "ความเร่งด่วน": getPriorityLabel(c.priority),
+                "ผู้แจ้ง": c.reporter.fullName,
+                "เบอร์โทร": c.reporter.phone,
+                "ผู้รับผิดชอบ": c.assignee ? c.assignee.fullName : "-",
+                "วันที่แจ้ง": formatDateTime(c.createdAt),
+                "SLA": c.slaDueAt ? formatDateTime(c.slaDueAt) : "-"
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Cases");
+            
+            const fileName = `HealthHelp_Cases_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            toast.success("ส่งออกข้อมูลสำเร็จ");
+        } catch (error) {
+            console.error("Export error:", error);
+            toast.error("เกิดข้อผิดพลาดในการส่งออกข้อมูล");
+        }
+    }
+
     function isSLABreached(slaDueAt: string | Date | null, status: string): boolean {
         if (!slaDueAt) return false;
         if (status === "RESOLVED" || status === "CLOSED") return false;
@@ -106,15 +143,35 @@ export function CaseListClient({
                     </h2>
                     <p className="text-slate-500 text-xs mt-0.5">{total} เคสตามที่กรอง</p>
                 </div>
-                <button
-                    onClick={() => applyFilter("status", currentStatus === "HIDE_DONE" ? "SHOW_DONE" : "HIDE_DONE")}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all ${currentStatus === "HIDE_DONE"
-                        ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white"
-                        : "bg-indigo-600 text-white hover:bg-indigo-700"
-                        }`}
-                >
-                    {currentStatus === "HIDE_DONE" ? "เคสที่ดำเนินการเสร็จสิ้น" : "เคสที่กำลังดำเนินการ"}
-                </button>
+                <div className="flex items-center gap-3">
+                    {canAssign && (
+                        <>
+                            <button
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all bg-emerald-600 text-white hover:bg-emerald-500 border border-emerald-500 flex items-center gap-2"
+                                title="นำเข้าข้อมูลจาก Excel"
+                            >
+                                <span className="text-xl leading-none -mt-1">+</span> Import
+                            </button>
+                            <button
+                                onClick={handleExport}
+                                className="px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700 flex items-center gap-2"
+                                title="ส่งออกข้อมูลเป็นไฟล์ Excel"
+                            >
+                                <Download className="w-4 h-4" /> Export
+                            </button>
+                        </>
+                    )}
+                    <button
+                        onClick={() => applyFilter("status", currentStatus === "HIDE_DONE" ? "SHOW_DONE" : "HIDE_DONE")}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all ${currentStatus === "HIDE_DONE"
+                            ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 hover:text-white"
+                            : "bg-indigo-600 text-white hover:bg-indigo-700"
+                            }`}
+                    >
+                        {currentStatus === "HIDE_DONE" ? "เคสที่ดำเนินการเสร็จสิ้น" : "เคสที่กำลังดำเนินการ"}
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -308,6 +365,8 @@ export function CaseListClient({
                     </button>
                 </div>
             )}
+
+            <ImportCasesModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
         </div>
     );
 }

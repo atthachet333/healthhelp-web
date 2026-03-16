@@ -15,6 +15,11 @@ import {
     Star,
     Loader2,
     Phone,
+    FileText,
+    Paperclip,
+    X,
+    ImageIcon,
+    Send,
 } from "lucide-react";
 import { getStatusLabel, getStatusColor, getPriorityLabel, getPriorityColor, formatDateTime } from "@/lib/utils";
 
@@ -30,6 +35,8 @@ export default function TrackPage() {
     const [error, setError] = useState("");
     const [userReply, setUserReply] = useState("");
     const [submittingReply, setSubmittingReply] = useState(false);
+    const [userFiles, setUserFiles] = useState<File[]>([]);
+    const [uploadingUserFiles, setUploadingUserFiles] = useState(false);
 
     // CSAT state
     const [csatScore, setCsatScore] = useState(0);
@@ -67,16 +74,40 @@ export default function TrackPage() {
     async function handleUserReply() {
         if (!caseData || !userReply.trim()) return;
         setSubmittingReply(true);
-        const res = await addPublicCaseUpdate(caseData.trackingCode, userReply);
+        const res = await addPublicCaseUpdate(caseData.trackingCode, userReply, []);
         if (res.success) {
             setUserReply("");
-            // Refresh case data
             const data = await getCaseByTracking(caseData.trackingCode);
             if (data) setCaseData(data);
         } else {
             setError(res.error || "เกิดข้อผิดพลาดในการส่งข้อความ");
         }
         setSubmittingReply(false);
+    }
+
+    /* ========= ส่งไฟล์เป็น bubble ใหม่แยก ========= */
+    async function handleSendFileOnly(files: File[]) {
+        if (!caseData || files.length === 0) return;
+        setUploadingUserFiles(true);
+        try {
+            const formData = new FormData();
+            files.forEach(f => formData.append("files", f));
+            const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+            if (!uploadRes.ok) throw new Error("upload failed");
+            const uploadData = await uploadRes.json();
+            const uploadedAttachments = (uploadData.files || []).map((f: any) => ({ ...f, fileSize: f.fileSize || 0 }));
+            const res = await addPublicCaseUpdate(caseData.trackingCode, "", uploadedAttachments);
+            if (res.success) {
+                setUserFiles([]);
+                const data = await getCaseByTracking(caseData.trackingCode);
+                if (data) setCaseData(data);
+            } else {
+                setError(res.error || "เกิดข้อผิดพลาด");
+            }
+        } catch (err) {
+            setError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
+        }
+        setUploadingUserFiles(false);
     }
 
     async function handleCSAT() {
@@ -245,11 +276,15 @@ export default function TrackPage() {
 
                             {/* Timeline */}
                             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 w-full">
-                                <h4 className="text-xl font-bold text-slate-900 mb-8 flex items-center gap-3">
-                                    <Clock className="w-6 h-6 text-indigo-500" />
-                                    การสนทนาและไทม์ไลน์
-                                </h4>
-                                <div className="space-y-6">
+                                {/* ── Conversation Timeline ── */}
+                                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
+                                    {/* Header */}
+                                    <div className="bg-gradient-to-r from-indigo-600 to-teal-600 px-5 py-3 flex items-center gap-2">
+                                        <Clock className="w-5 h-5 text-white" />
+                                        <h4 className="text-base font-bold text-white tracking-wide">การสนทนาและไทม์ไลน์</h4>
+                                    </div>
+                                    {/* Messages area */}
+                                    <div className="bg-slate-50 p-4 space-y-6">
                                     {caseData.updates?.filter((u: any) => {
                                         // WHITELIST — only show entries safe for the case reporter:
                                         const isSystemEvent = !u.user && u.actionType !== "COMMENT";
@@ -276,6 +311,30 @@ export default function TrackPage() {
                                                         {/* Bubble */}
                                                         <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-none px-5 py-4 shadow-lg border-2 border-indigo-700">
                                                             <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>
+                                                            {u.attachments && u.attachments.length > 0 && (
+                                                                <div className="mt-3 flex flex-col gap-2">
+                                                                    {u.attachments.map((file: any, idx: number) => (
+                                                                        <a
+                                                                            key={idx}
+                                                                            href={file.fileUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-2 text-xs bg-indigo-800/50 hover:bg-indigo-700/50 text-indigo-100 px-3 py-2 rounded-lg border border-indigo-500/30 transition-colors w-fit max-w-[200px]"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            {file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                                <img src={file.fileUrl} alt={file.fileName} className="mt-1 max-w-[150px] max-h-[150px] object-cover rounded shadow" />
+                                                                            ) : (
+                                                                                <>
+                                                                                    <FileText className="w-4 h-4 shrink-0" />
+                                                                                    <span className="truncate">{file.fileName}</span>
+                                                                                </>
+                                                                            )}
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -327,35 +386,119 @@ export default function TrackPage() {
                                                             {u.note && (
                                                                 <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>
                                                             )}
+                                                            {u.attachments && u.attachments.length > 0 && (
+                                                                <div className="mt-3 flex flex-col gap-2">
+                                                                    {u.attachments.map((file: any, idx: number) => {
+                                                                        if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                                                                            return (
+                                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                                <img
+                                                                                    key={idx}
+                                                                                    src={file.fileUrl}
+                                                                                    alt={file.fileName}
+                                                                                    className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-black/20 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                                />
+                                                                            );
+                                                                        } else if (file.fileUrl.match(/\.pdf$/i)) {
+                                                                            return (
+                                                                                <embed
+                                                                                    key={idx}
+                                                                                    src={file.fileUrl}
+                                                                                    type="application/pdf"
+                                                                                    width="300"
+                                                                                    height="400"
+                                                                                    className="border border-black/20 rounded-lg shadow-md"
+                                                                                />
+                                                                            );
+                                                                        } else {
+                                                                            return (
+                                                                                <a
+                                                                                    key={idx}
+                                                                                    href={file.fileUrl}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="flex items-center gap-2 text-xs bg-black/10 hover:bg-black/20 text-current px-3 py-2 rounded-lg border border-black/10 transition-colors w-fit"
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                >
+                                                                                    <FileText className="w-4 h-4 shrink-0" />
+                                                                                    <span className="truncate max-w-[250px]">{file.fileName}</span>
+                                                                                </a>
+                                                                            );
+                                                                        }
+                                                                    })}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         );
                                     })}
-                                </div>
+                                    </div>{/* close messages area */}
+                                </div>{/* close rounded card */}
 
                                 {/* User Reply Box */}
                                 {caseData.status !== "RESOLVED" && caseData.status !== "CLOSED" && (
-                                    <div className="mt-8 pt-6 border-t border-slate-200">
-                                        <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                            <MessageCircle className="w-4 h-4 text-indigo-500" />
-                                            ตอบกลับ / ให้ข้อมูลเพิ่มเติม
-                                        </h4>
-                                        <textarea
-                                            value={userReply}
-                                            onChange={(e) => setUserReply(e.target.value)}
-                                            className="input-field min-h-[100px] mb-3 text-sm"
-                                            placeholder="พิมพ์ข้อความตอบกลับเจ้าหน้าที่ที่นี่..."
-                                        />
-                                        <button
-                                            onClick={handleUserReply}
-                                            disabled={!userReply.trim() || submittingReply}
-                                            className="btn-primary w-full sm:w-auto px-8"
-                                        >
-                                            {submittingReply ? <Loader2 className="w-4 h-4 animate-spin mr-2 inline" /> : null}
-                                            ส่งข้อความ
-                                        </button>
+                                    <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 shadow-md overflow-hidden">
+                                        {/* Header */}
+                                        <div className="bg-indigo-600 px-5 py-3 flex items-center gap-2">
+                                            <MessageCircle className="w-5 h-5 text-white" />
+                                            <h4 className="text-base font-bold text-white">ตอบกลับ / ให้ข้อมูลเพิ่มเติม</h4>
+                                        </div>
+                                        <div className="p-4">
+                                            {/* Text area + Send text button */}
+                                            <div className="flex gap-2 items-end mb-3">
+                                                <textarea
+                                                    value={userReply}
+                                                    onChange={(e) => setUserReply(e.target.value)}
+                                                    className="flex-1 input-field min-h-[90px] text-base resize-none"
+                                                    placeholder="พิมพ์ข้อความตอบกลับเจ้าหน้าที่..."
+                                                />
+                                                <button
+                                                    onClick={handleUserReply}
+                                                    disabled={!userReply.trim() || submittingReply}
+                                                    className="btn-primary px-5 py-3 text-base font-bold flex items-center gap-2 self-end disabled:opacity-50 min-h-[52px]"
+                                                >
+                                                    {submittingReply ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                                    ส่ง
+                                                </button>
+                                            </div>
+
+                                            {/* Divider */}
+                                            <div className="flex items-center gap-3 my-3">
+                                                <hr className="flex-1 border-indigo-200" />
+                                                <span className="text-xs text-indigo-400 font-semibold">หรือแนบรูป / ไฟล์</span>
+                                                <hr className="flex-1 border-indigo-200" />
+                                            </div>
+
+                                            {/* File-only send: pick & instantly send as separate bubble */}
+                                            <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer transition-all font-semibold text-sm select-none ${
+                                                uploadingUserFiles
+                                                    ? "border-indigo-300 bg-indigo-100 text-indigo-400 pointer-events-none"
+                                                    : "border-indigo-400 bg-white text-indigo-600 hover:bg-indigo-50 hover:border-indigo-500"
+                                            }`}>
+                                                {uploadingUserFiles ? (
+                                                    <><Loader2 className="w-4 h-4 animate-spin" /> กำลังอัปโหลด...</>
+                                                ) : (
+                                                    <><ImageIcon className="w-4 h-4" /> 📎 แนบรูป / ไฟล์ (ส่งเป็นข้อความใหม่ทันที)</>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*,.pdf,.doc,.docx"
+                                                    disabled={uploadingUserFiles}
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files.length > 0) {
+                                                            const files = Array.from(e.target.files);
+                                                            handleSendFileOnly(files);
+                                                        }
+                                                        e.target.value = '';
+                                                    }}
+                                                />
+                                            </label>
+                                            <p className="text-xs text-slate-400 mt-2 text-center">รองรับรูปภาพ .jpg .png และไฟล์ .pdf ขนาดไม่เกิน 10MB</p>
+                                        </div>
                                     </div>
                                 )}
                             </div>

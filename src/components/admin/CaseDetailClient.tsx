@@ -18,6 +18,9 @@ import {
     Mail,
     MapPin,
     Lock,
+    Paperclip,
+    X,
+    FileText,
 } from "lucide-react";
 import {
     getStatusLabel,
@@ -28,6 +31,7 @@ import {
     getChannelLabel,
 } from "@/lib/utils";
 import { addCaseUpdate, assignCase } from "@/app/actions/admin-actions";
+import { toast } from "react-hot-toast";
 
 interface CaseData {
     id: string;
@@ -86,6 +90,9 @@ export function CaseDetailClient({
     const [submittingInternal, setSubmittingInternal] = useState(false);
     const [submittingPublic, setSubmittingPublic] = useState(false);
     const [showAssign, setShowAssign] = useState(false);
+    const [publicFiles, setPublicFiles] = useState<File[]>([]);
+    const [internalFiles, setInternalFiles] = useState<File[]>([]);
+    const [uploadingFiles, setUploadingFiles] = useState(false);
 
     const currentUserRole = typeof window !== "undefined"
         ? JSON.parse(localStorage.getItem("healthhelp_user") || "{}").role
@@ -94,13 +101,38 @@ export function CaseDetailClient({
     const canAssign = currentUserRole === "ADMIN" || currentUserRole === "SUPERVISOR";
 
     async function handleSubmitInternal() {
-        if (!internalNote.trim() && !newStatus) return;
+        if (!internalNote.trim() && !newStatus && internalFiles.length === 0) return;
         setSubmittingInternal(true);
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
-        await addCaseUpdate(caseData.id, user.id, internalNote, newStatus || undefined, false);
+
+        // Handle file uploads
+        const uploadedAttachments = [];
+        if (internalFiles.length > 0) {
+            setUploadingFiles(true);
+            try {
+                const formData = new FormData();
+                internalFiles.forEach(file => formData.append("files", file));
+                const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                if (!uploadRes.ok) throw new Error("Upload failed");
+                const uploadData = await uploadRes.json();
+                uploadedAttachments.push(...uploadData.files);
+            } catch (error) {
+                console.error("File upload error:", error);
+                toast.error("อัปโหลดไฟล์ไม่สำเร็จ");
+                setSubmittingInternal(false);
+                setUploadingFiles(false);
+                return;
+            }
+            setUploadingFiles(false);
+        }
+
+        const finalNote = internalNote.trim() || (internalFiles.length > 0 ? "ส่งไฟล์แนบ/หลักฐานเพิ่มเติม" : "");
+        await addCaseUpdate(caseData.id, user.id, finalNote, newStatus || undefined, false, uploadedAttachments);
         setInternalNote("");
+        setInternalFiles([]);
         setNewStatus("");
         setSubmittingInternal(false);
+        toast.success("บันทึกข้อมูลและอัปเดตสถานะสำเร็จ");
         router.refresh();
     }
 
@@ -108,16 +140,39 @@ export function CaseDetailClient({
         if (!publicNote.trim()) return;
         setSubmittingPublic(true);
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
-        await addCaseUpdate(caseData.id, user.id, publicNote, undefined, true);
+        await addCaseUpdate(caseData.id, user.id, publicNote.trim(), undefined, true, []);
         setPublicNote("");
         setSubmittingPublic(false);
+        toast.success("ส่งข้อความถึงผู้แจ้งสำเร็จ");
         router.refresh();
+    }
+
+    /* ==== ส่งไฟล์เป็น bubble ใหม่แยก (ฝั่งแอดมิน) ==== */
+    async function handleSendFileOnlyAdmin(files: File[]) {
+        if (files.length === 0) return;
+        setUploadingFiles(true);
+        const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
+        try {
+            const formData = new FormData();
+            files.forEach(f => formData.append("files", f));
+            const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+            if (!uploadRes.ok) throw new Error("Upload failed");
+            const uploadData = await uploadRes.json();
+            const uploaded = (uploadData.files || []).map((f: any) => ({ ...f, fileSize: f.fileSize || 0 }));
+            await addCaseUpdate(caseData.id, user.id, "แนบไฟล์/รูปภาพเพิ่มเติม", undefined, true, uploaded);
+            toast.success("ส่งไฟล์ถึงผู้แจ้งสำเร็จ");
+            router.refresh();
+        } catch {
+            toast.error("อัปโหลดไฟล์ไม่สำเร็จ");
+        }
+        setUploadingFiles(false);
     }
 
     async function handleAssign(assigneeId: string) {
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
         await assignCase(caseData.id, assigneeId, user.id);
         setShowAssign(false);
+        toast.success("บันทึกการมอบหมายผู้รับผิดชอบสำเร็จ");
         router.refresh();
     }
 
@@ -129,6 +184,14 @@ export function CaseDetailClient({
             case "COMMENT": return <MessageCircle className="w-4 h-4 text-indigo-400" />;
             default: return <Clock className="w-4 h-4 text-gray-400" />;
         }
+    }
+
+    function removePublicFile(index: number) {
+        setPublicFiles(prev => prev.filter((_, i) => i !== index));
+    }
+
+    function removeInternalFile(index: number) {
+        setInternalFiles(prev => prev.filter((_, i) => i !== index));
     }
 
     const isSLABreached =
@@ -203,12 +266,55 @@ export function CaseDetailClient({
                                                     <span className="text-xs text-slate-400">{formatDateTime(u.createdAt)}</span>
                                                 </div>
                                                 <div className="bg-white border text-slate-800 border-slate-200 rounded-2xl rounded-tl-sm px-5 py-3 shadow-md">
-                                                    <p className="text-sm sm:text-base leading-relaxed">{u.note}</p>
+                                                    {u.note && <p className="text-sm sm:text-base leading-relaxed">{u.note}</p>}
+                                                    {u.attachments && u.attachments.length > 0 && (
+                                                        <div className="mt-3 flex flex-col gap-2">
+                                                            {u.attachments.map((file, idx) => {
+                                                                if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                                                                    return (
+                                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                                        <img
+                                                                            key={idx}
+                                                                            src={file.fileUrl}
+                                                                            alt={file.fileName}
+                                                                            className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                        />
+                                                                    );
+                                                                } else if (file.fileUrl.match(/\.pdf$/i)) {
+                                                                    return (
+                                                                        <embed
+                                                                            key={idx}
+                                                                            src={file.fileUrl}
+                                                                            type="application/pdf"
+                                                                            width="300"
+                                                                            height="400"
+                                                                            className="border border-slate-200 rounded-lg shadow-md"
+                                                                        />
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <a
+                                                                            key={idx}
+                                                                            href={file.fileUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-2 text-xs bg-slate-50 hover:bg-slate-100 text-indigo-700 px-3 py-2 rounded-xl border border-slate-200 transition-colors w-fit"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <FileText className="w-4 h-4 shrink-0 text-indigo-500" />
+                                                                            <span className="truncate max-w-[250px] text-slate-700">{file.fileName}</span>
+                                                                        </a>
+                                                                    );
+                                                                }
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     );
                                 }
+
 
                                 if (isAdminReply) {
                                     return (
@@ -256,6 +362,48 @@ export function CaseDetailClient({
                                                     {u.note && (
                                                         <p className="text-sm sm:text-base leading-relaxed text-right">{u.note}</p>
                                                     )}
+                                                    {u.attachments && u.attachments.length > 0 && (
+                                                        <div className="mt-3 flex flex-col gap-2 items-end">
+                                                            {u.attachments.map((file: any, idx: number) => {
+                                                                if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                                                                    return (
+                                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                                        <img
+                                                                            key={idx}
+                                                                            src={file.fileUrl}
+                                                                            alt={file.fileName}
+                                                                            className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-indigo-500/30 cursor-pointer hover:opacity-90 transition-opacity"
+                                                                        />
+                                                                    );
+                                                                } else if (file.fileUrl.match(/\.pdf$/i)) {
+                                                                    return (
+                                                                        <embed
+                                                                            key={idx}
+                                                                            src={file.fileUrl}
+                                                                            type="application/pdf"
+                                                                            width="300"
+                                                                            height="400"
+                                                                            className="border border-indigo-500/30 rounded-lg shadow-md"
+                                                                        />
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <a
+                                                                            key={idx}
+                                                                            href={file.fileUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-2 text-xs bg-slate-900/50 hover:bg-slate-900/80 text-indigo-300 px-3 py-2 rounded-xl border border-indigo-500/30 transition-colors w-fit"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            <FileText className="w-4 h-4 shrink-0" />
+                                                                            <span className="truncate max-w-[250px]">{file.fileName}</span>
+                                                                        </a>
+                                                                    );
+                                                                }
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -276,29 +424,55 @@ export function CaseDetailClient({
 
                         {/* Public Reply Box (Inside Chat) */}
                         {!isViewer && (
-                            <div className="mt-4 border-t border-slate-800 pt-4">
-                                <h4 className="text-sm font-bold text-indigo-400 mb-2 flex items-center gap-2">
+                            <div className="mt-4 border-t border-indigo-900 pt-4">
+                                <h4 className="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
                                     <MessageCircle className="w-4 h-4" />
                                     ตอบกลับผู้ใช้งาน (แชท)
                                 </h4>
-                                <div className="flex gap-2">
+                                {/* Text + send */}
+                                <div className="flex gap-2 items-end mb-2">
                                     <textarea
                                         value={publicNote}
                                         onChange={(e) => setPublicNote(e.target.value)}
-                                        className="input-field min-h-[50px] flex-1 py-2 text-sm"
+                                        className="flex-1 input-field min-h-[60px] py-2.5 text-sm resize-none"
                                         placeholder="พิมพ์ข้อความตอบกลับผู้ใช้งาน..."
                                     />
                                     <button
                                         onClick={handleSubmitPublic}
                                         disabled={!publicNote.trim() || submittingPublic}
-                                        className="btn-primary h-auto px-4 self-end"
+                                        className="btn-primary h-auto px-4 py-2.5 flex items-center gap-1.5 min-h-[52px] text-sm disabled:opacity-50"
                                     >
                                         {submittingPublic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                        ส่ง
                                     </button>
                                 </div>
+                                {/* File-only send as separate bubble */}
+                                <label className={`flex items-center justify-center gap-2 w-full py-2.5 border-2 border-dashed rounded-xl cursor-pointer transition-all text-xs font-semibold select-none ${uploadingFiles
+                                        ? "border-indigo-700 bg-indigo-900/20 text-indigo-500 pointer-events-none"
+                                        : "border-indigo-600/60 bg-transparent text-indigo-400 hover:bg-indigo-900/30 hover:border-indigo-500 hover:text-indigo-300"
+                                    }`}>
+                                    {uploadingFiles ? (
+                                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังส่งไฟล์...</>
+                                    ) : (
+                                        <><Paperclip className="w-3.5 h-3.5" /> ส่งรูป/ไฟล์</>
+                                    )}
+                                    <input
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        disabled={uploadingFiles}
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files.length > 0) {
+                                                handleSendFileOnlyAdmin(Array.from(e.target.files));
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                </label>
                             </div>
                         )}
                     </div>
+
 
                     {/* Internal Reply Box */}
                     {!isViewer && (
@@ -307,12 +481,55 @@ export function CaseDetailClient({
                                 <AlertCircle className="w-5 h-5 text-slate-400" />
                                 บันทึกการทำงานภายใน / เปลี่ยนสถานะ
                             </h3>
-                            <textarea
-                                value={internalNote}
-                                onChange={(e) => setInternalNote(e.target.value)}
-                                className="input-field min-h-[80px] mb-4 bg-slate-900/50"
-                                placeholder="พิมพ์บันทึกข้อความภายในระบบ (ผู้แจ้งจะไม่เห็นข้อความนี้)..."
-                            />
+
+                            {internalFiles.length > 0 && (
+                                <div className="flex flex-wrap gap-3 mb-3 p-3 bg-slate-900/40 rounded-xl border border-slate-700">
+                                    {internalFiles.map((f, i) => (
+                                        <div key={i} className="relative group">
+                                            {f.type.startsWith("image/") ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img
+                                                    src={URL.createObjectURL(f)}
+                                                    alt={f.name}
+                                                    className="w-16 h-16 object-cover rounded-lg border-2 border-slate-600 shadow-sm"
+                                                />
+                                            ) : (
+                                                <div className="w-16 h-16 bg-slate-800 rounded-lg border-2 border-slate-600 flex flex-col items-center justify-center gap-1">
+                                                    <FileText className="w-5 h-5 text-slate-400" />
+                                                    <span className="text-[8px] text-slate-400 px-1 text-center truncate w-full">{f.name}</span>
+                                                </div>
+                                            )}
+                                            <button onClick={() => removeInternalFile(i)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="relative mb-4">
+                                <textarea
+                                    value={internalNote}
+                                    onChange={(e) => setInternalNote(e.target.value)}
+                                    className="input-field min-h-[80px] w-full bg-slate-900/50 resize-none"
+                                    placeholder="พิมพ์บันทึกข้อความภายในระบบ (ผู้แจ้งจะไม่เห็นข้อความนี้)..."
+                                />
+                            </div>
+                            {/* Attach File for Internal */}
+                            <label className="inline-flex items-center gap-2 px-4 py-2 mb-4 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-300 hover:text-white rounded-xl cursor-pointer transition-all text-sm font-semibold select-none">
+                                <Paperclip className="w-4 h-4" />
+                                📎 แนบไฟล์/รูปภาพ
+                                <input
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files) setInternalFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                        e.target.value = '';
+                                    }}
+                                />
+                            </label>
+
                             <div className="flex flex-wrap items-center gap-3">
                                 <select
                                     value={newStatus}
@@ -328,10 +545,10 @@ export function CaseDetailClient({
                                 </select>
                                 <button
                                     onClick={handleSubmitInternal}
-                                    disabled={(!internalNote.trim() && !newStatus) || submittingInternal}
+                                    disabled={(!internalNote.trim() && !newStatus && internalFiles.length === 0) || submittingInternal || uploadingFiles}
                                     className="btn-primary py-2 bg-slate-700 hover:bg-slate-600 shadow-none border border-slate-600"
                                 >
-                                    {submittingInternal ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                    {submittingInternal || uploadingFiles ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                     บันทึกข้อมูล
                                 </button>
                             </div>

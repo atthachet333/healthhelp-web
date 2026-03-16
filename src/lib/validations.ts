@@ -6,7 +6,7 @@ export const createCaseSchema = z.object({
         .min(2, "กรุณาระบุชื่อ-นามสกุล (อย่างน้อย 2 ตัวอักษร)"),
     phone: z
         .string()
-        .regex(/^0[0-9]{8,9}$/, "เบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)"),
+        .regex(/^0[0-9]{9}$/, "เบอร์โทรศัพท์ต้องมี 10 หลัก (เช่น 0812345678)"),
     email: z.string().email("รูปแบบอีเมลไม่ถูกต้อง").optional().or(z.literal("")),
     lineId: z.string().optional().or(z.literal("")),
     address: z.string().optional().or(z.literal("")),

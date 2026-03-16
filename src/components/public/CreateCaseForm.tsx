@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createCase } from "@/app/actions/case-actions";
 import { getHospitals } from "@/app/actions/master-data-actions";
+import { toast } from "react-hot-toast";
 import { CheckCircle2, Copy, Loader2, User, Phone, Mail, MessageSquare, FileText, AlertCircle, MapPin, List, ChevronDown, Tag, Send, Upload, Hospital, Search } from "lucide-react";
 
 interface Category {
@@ -76,6 +77,7 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
         const res = await createCase(input);
 
         if (res.success && res.trackingCode && res.caseNo) {
+            toast.success("ส่งข้อมูลแจ้งปัญหาสำเร็จ!");
             // If there's a file, upload it to the new endpoint
             if (file) {
                 try {
@@ -92,6 +94,7 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
             setResult({ trackingCode: res.trackingCode, caseNo: res.caseNo });
             setLoading(false);
         } else if (res.error) {
+            toast.error("เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาตรวจสอบอีกครั้ง");
             setErrors(res.error as Record<string, string[]>);
             setLoading(false);
         }
@@ -100,6 +103,7 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
     function handleCopy() {
         if (result) {
             navigator.clipboard.writeText(result.trackingCode);
+            toast.success("คัดลอกรหัสติดตามแล้ว");
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
@@ -192,7 +196,12 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
                             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                                 <Phone className="h-[18px] w-[18px] text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                             </div>
-                            <input name="phone" className="input-field bg-white focus:bg-white pl-[52px]" placeholder="0812345678" required />
+                            <input name="phone" maxLength={10} className="input-field bg-white focus:bg-white pl-[52px]" placeholder="0812345678" required 
+                                onInput={(e) => {
+                                    const target = e.target as HTMLInputElement;
+                                    target.value = target.value.replace(/[^0-9]/g, '');
+                                }} 
+                            />
                         </div>
                         {errors.phone && <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.phone[0]}</p>}
                     </div>
