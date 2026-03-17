@@ -1,7 +1,34 @@
-# HealthHelp - ระบบ Helpdesk แจ้งเหตุและติดตามปัญหา
+# HealthHelp - ระบบแจ้งปัญหา IT และ Helpdesk สำหรับองค์กร
 
-ระบบ Helpdesk Web Application ครบวงจร สร้างด้วย Next.js 14, Prisma ORM, PostgreSQL
-รองรับภาษาไทย, Dark Mode, Responsive Design
+HealthHelp คือระบบแจ้งปัญหา IT และ Helpdesk สำหรับองค์กร ที่ช่วยให้ผู้ใช้งานสามารถส่งคำขอ แจ้งเหตุ ติดตามสถานะเคส และสื่อสารกับเจ้าหน้าที่ได้จากหน้าเว็บเดียว พร้อมระบบหลังบ้านสำหรับบริหารจัดการ Ticket แบบครบวงจร
+
+## Dashboard Mockup ล่าสุด
+
+เปิดดูไฟล์ mockup ได้ทันทีจากลิงก์นี้:
+
+- [mockup/TicketDashboardMockup.tsx](./mockup/TicketDashboardMockup.tsx)
+
+ไฟล์นี้เป็น mockup หน้า Dashboard สำหรับระบบจัดการ Ticket ที่ออกแบบจากโทน UI ของระบบปัจจุบัน เพื่อใช้ดูแนวทางหน้าตาและนำไปต่อยอดได้ทันที
+
+## ✨ ฟีเจอร์เด่น (Key Features)
+
+- ระบบแจ้งปัญหา IT และ Helpdesk แบบครบวงจร สำหรับการใช้งานทั้งหน้าบ้านและหลังบ้าน
+- ผู้ใช้งานสามารถสร้างเคสใหม่ ติดตามสถานะย้อนหลังด้วยเลขติดตามหรือเบอร์โทร และแนบไฟล์หลักฐานได้
+- เจ้าหน้าที่สามารถจัดการเคส เปลี่ยนสถานะ มอบหมายผู้รับผิดชอบ ตอบกลับผู้ใช้งาน และติดตาม SLA ได้จากระบบหลังบ้าน
+- มีระบบการแจ้งเตือนผ่าน LINE Messaging API แบบเรียลไทม์ ครอบคลุมทั้งฝั่งหน้าบ้าน (ผู้ใช้งาน - รับการแจ้งเตือนสถานะเคส, เลขติดตาม) และฝั่งหลังบ้าน (แอดมิน - รับแจ้งเตือนทันทีเมื่อมีเคสใหม่เข้าสู่ระบบ)
+- เชื่อมต่อ Google Sheets API เพื่อใช้เก็บข้อมูลเคสและไฟล์แนบเป็นหลักฐานเพิ่มเติม
+
+## คู่มือการใช้งาน
+
+เปิดอ่านเอกสารได้จากลิงก์ด้านล่าง:
+
+- [สารบัญคู่มือ](./docs/README.md)
+- [คู่มือหน้าบ้าน](./docs/MANUAL_FRONT.md)
+- [คู่มือหลังบ้าน](./docs/MANUAL_BACKOFFICE.md)
+
+สรุปการใช้งานแบบเร็ว:
+- `หน้าบ้าน`: ใช้สำหรับแจ้งปัญหา ติดตามเคส ส่งข้อมูลเพิ่มเติม และให้คะแนนความพึงพอใจ
+- `หลังบ้าน`: ใช้สำหรับจัดการเคส มอบหมายงาน ตอบกลับผู้แจ้ง จัดการข้อมูลหลัก และดูแดชบอร์ด
 
 ## 🚀 Features
 
@@ -25,13 +52,15 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend + Backend | Next.js 14 (App Router) |
+| Frontend + Backend | Next.js (App Router) |
 | Language | TypeScript |
 | ORM | Prisma |
 | Database | PostgreSQL |
 | Styling | Tailwind CSS v4 |
 | Icons | Lucide React |
 | Validation | Zod |
+| Notification | LINE Messaging API |
+| External Integration | Google Sheets API |
 | Auth | Custom (bcryptjs + localStorage) |
 
 ## 📋 Prerequisites
@@ -49,17 +78,36 @@ cd healthhelp
 npm install
 ```
 
-### 2. ตั้งค่า Database
+### 2. การตั้งค่าเบื้องต้น (Getting Started)
 
 สร้างฐานข้อมูล PostgreSQL:
 ```sql
 CREATE DATABASE healthhelp;
 ```
 
-แก้ไขไฟล์ `.env`:
+จากนั้นสร้างไฟล์ `.env` และกำหนดค่าตัวอย่างดังนี้:
 ```env
-DATABASE_URL="postgresql://postgres:password@localhost:5432/healthhelp?schema=public"
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/healthhelp?schema=public"
+
+# App
+AUTH_SECRET="your-app-secret"
+NEXTAUTH_URL="http://localhost:3000"
+
+# LINE Messaging API
+LINE_CHANNEL_ACCESS_TOKEN="your-line-channel-access-token"
+LINE_CHANNEL_SECRET="your-line-channel-secret"
+LINE_USER_ID="your-line-user-or-group-id"
+
+# Google Sheets API
+GOOGLE_SHEETS_CLIENT_EMAIL="your-service-account@project.iam.gserviceaccount.com"
+GOOGLE_SHEETS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n"
+GOOGLE_SHEETS_SPREADSHEET_ID="your-google-sheet-id"
 ```
+
+หมายเหตุ:
+- ห้ามใส่ค่าจริงหรือรหัสลับลงใน `README.md`
+- ไฟล์ `.env` และ `.env.local` ควรถูก ignore จาก Git เสมอ
 
 ### 3. สร้างตาราง & Seed Data
 

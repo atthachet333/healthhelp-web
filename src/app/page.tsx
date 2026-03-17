@@ -41,7 +41,7 @@ export default async function HomePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/track"
-              className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-blue-50 border border-blue-200/80 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+              className="md:hidden flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200/80 rounded-xl text-base font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
             >
               <Search className="w-4 h-4" />
               ติดตาม
@@ -59,24 +59,24 @@ export default async function HomePage() {
 
       {/* Main Content */}
       <main className="flex-grow flex flex-col items-center w-full relative z-10">
-        {/* Compact Hero */}
+        {/* Hero */}
         <div className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 relative overflow-hidden">
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 py-8 md:py-10 relative">
             <div className="text-center">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                แจ้งปัญหา IT - เรื่องอื่นๆ
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 leading-snug">
+                แจ้งปัญหา IT และเรื่องอื่นๆ
               </h2>
-              <p className="text-blue-100/90 text-sm sm:text-base mx-auto mb-4 text-center">
-                กรอกแบบฟอร์มด้านล่าง ทีมเจ้าหน้าที่จะดำเนินการติดต่อกลับ
+              <p className="text-blue-100/90 text-sm sm:text-base mx-auto mb-6 leading-relaxed">
+                กรอกแบบฟอร์มด้านล่าง ทีมเจ้าหน้าที่จะดำเนินการติดต่อกลับโดยเร็ว
               </p>
-              <div className="flex flex-wrap justify-center gap-3 text-xs">
+              <div className="flex flex-wrap justify-center gap-3">
                 {[
-                  { icon: Clock, text: "ตอบกลับภายใน 24 ชม." },
-                  { icon: Search, text: "ติดตามสถานะได้ตลอด" },
-                  { icon: Bell, text: "แจ้งเตือนอัตโนมัติ" },
+                  { icon: Clock, text: "ตอบกลับภายใน 24 ชั่วโมง" },
+                  { icon: Search, text: "ติดตามสถานะได้ตลอด 24 ชม." },
+                  { icon: Bell, text: "แจ้งเตือนทุกความคืบหน้า" },
                 ].map((f, i) => (
-                  <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white/90 font-medium">
-                    <f.icon className="w-3.5 h-3.5" />
+                  <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white font-semibold text-sm sm:text-base">
+                    <f.icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                     {f.text}
                   </div>
                 ))}
@@ -87,21 +87,21 @@ export default async function HomePage() {
 
         {/* Form Section */}
         <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-10 -mt-4 pb-12 relative z-20">
-          <div className="bg-white rounded-xl shadow-lg shadow-slate-200/40 border border-slate-200/80 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-slate-200/80 overflow-hidden">
             {/* Form Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 sm:px-8 py-5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-                  <MessageCircle className="w-5 h-5 text-white" />
+            <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 border-b border-slate-200/80 px-5 sm:px-6 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-white">แบบฟอร์มแจ้งปัญหา</h3>
-                  <p className="text-blue-100 text-xs hidden sm:block">กรุณากรอกข้อมูลให้ครบถ้วน เพื่อให้เจ้าหน้าที่ดำเนินการได้รวดเร็ว</p>
+                  <h3 className="text-sm font-bold text-slate-800">แบบฟอร์มแจ้งปัญหา</h3>
+                  <p className="text-slate-500 text-xs">กรุณากรอกข้อมูลให้ครบถ้วน เพื่อให้เจ้าหน้าที่ดำเนินการได้รวดเร็ว</p>
                 </div>
               </div>
             </div>
             {/* Form Content */}
-            <div className="p-5 sm:p-8">
+            <div className="p-5 sm:p-6">
               <CreateCaseForm categories={categories} />
             </div>
           </div>
@@ -118,7 +118,7 @@ export default async function HomePage() {
               </div>
               <span className="text-xs font-semibold text-slate-300">HealthHelp</span>
             </div>
-            <p className="text-[11px] text-slate-500">© 2026 HealthHelp - ระบบแจ้งเหตุและติดตามปัญหา ศูนย์เทคโนโลยีสารสนเทศและการสื่อสาร สำนักงานปลัดกระทรวง</p>
+            <p className="text-[11px] text-slate-500">© 2026 HealthHelp - ศูนย์เทคโนโลยีสารสนเทศและการสื่อสาร</p>
             <Link href="/admin/login" className="text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors">
               เจ้าหน้าที่ →
             </Link>

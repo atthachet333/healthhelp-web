@@ -77,18 +77,30 @@ async function main() {
     }
 
     const meta = await sheets.spreadsheets.get({ spreadsheetId });
-    const firstSheet = meta.data.sheets?.[0]?.properties?.title;
-    if (!firstSheet) {
-        console.error("Cannot read first sheet name.");
+    const allSheets = meta.data.sheets ?? [];
+    const mainSheet =
+        allSheets.find(s => s.properties?.title === "เคสที่แจ้งมาแล้ว") ??
+        allSheets[0];
+    const mainSheetName = mainSheet?.properties?.title;
+    if (!mainSheetName) {
+        console.error("Cannot read main sheet name.");
         return;
     }
+<<<<<<< HEAD
     console.log(`✅ Writing to sheet: "${firstSheet}"`);
+=======
+    console.log(`✅ Writing to sheet: "${mainSheetName}"`);
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
 
     // --- Write header row (always overwrite row 1 to keep it correct) ---
     console.log("Writing header row (A1:P1)...");
     await sheets.spreadsheets.values.update({
         spreadsheetId,
+<<<<<<< HEAD
         range: `'${firstSheet}'!A1:P1`,
+=======
+        range: `'${mainSheetName}'!A1:P1`,
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [SHEET_HEADERS] },
     });
@@ -97,7 +109,7 @@ async function main() {
     console.log("Clearing old data rows (keeping header)...");
     await sheets.spreadsheets.values.clear({
         spreadsheetId,
-        range: `'${firstSheet}'!A2:Z10000`,
+        range: `'${mainSheetName}'!A2:Z10000`,
     });
 
     // --- Fetch all cases including related data ---
@@ -129,7 +141,11 @@ async function main() {
 
     // Build rows matching SHEET_HEADERS order exactly (A-P = 16 columns)
     const rows = cases.map((c: any) => [
+<<<<<<< HEAD
         formatDate(new Date(c.created_at)),           // A: วันที่/เวลา
+=======
+        `'${formatDate(new Date(c.created_at))}`,     // A: วันที่/เวลา (เก็บเป็นข้อความ ไม่ให้แสดงเป็นตัวเลข 46094.x)
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         c.case_no,                                    // B: เลขที่เคส
         c.tracking_code,                              // C: Tracking Code
         c.full_name,                                  // D: ชื่อผู้แจ้ง
@@ -149,7 +165,7 @@ async function main() {
 
     await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: `'${firstSheet}'!A2`,
+        range: `'${mainSheetName}'!A2`,
         valueInputOption: "USER_ENTERED",
         insertDataOption: "INSERT_ROWS",
         requestBody: { values: rows },

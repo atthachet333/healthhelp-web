@@ -156,25 +156,27 @@ export function DashboardClient({ metrics, filter = "DAY", refDateIso }: { metri
                 </h3>
                 {metrics.staffStats.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {metrics.staffStats.map((staff) => (
-                            <div key={staff.name} className="bg-[#0b1121] rounded-xl p-5 border border-slate-800">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shadow-inner">
-                                        <span className="text-indigo-400 font-extrabold text-lg">{staff.name.charAt(0)}</span>
+                        {metrics.staffStats.map((staff) => {
+                            return (
+                                <div key={staff.name} className="bg-[#0b1121] rounded-xl p-5 border border-slate-800">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shadow-inner">
+                                            <span className="text-indigo-400 font-extrabold text-lg">{staff.name.charAt(0)}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-semibold text-base">{staff.name}</p>
+                                            <p className="text-slate-400 text-sm font-medium mt-0.5">{staff.cases} เคสที่รับผิดชอบ</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-white font-semibold text-base">{staff.name}</p>
-                                        <p className="text-slate-400 text-sm font-medium mt-0.5">{staff.cases} เคสที่รับผิดชอบ</p>
+                                    <div className="bg-[#1a2540] rounded-full h-2.5 overflow-hidden">
+                                        <div
+                                            className="bg-gradient-to-r from-green-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                                            style={{ width: `${(staff.cases / maxStaff) * 100}%` }}
+                                        />
                                     </div>
                                 </div>
-                                <div className="bg-[#1a2540] rounded-full h-2.5 overflow-hidden">
-                                    <div
-                                        className="bg-gradient-to-r from-green-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                                        style={{ width: `${(staff.cases / maxStaff) * 100}%` }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 ) : (
                     <p className="text-slate-500 text-base py-4 text-center">ยังไม่มีข้อมูลผลงาน</p>

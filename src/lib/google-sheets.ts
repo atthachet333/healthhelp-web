@@ -98,6 +98,35 @@ export async function getGoogleSheetsClient() {
  * Append a row of tracking data to the Google Sheet
  * @param rowData Array of values to append (will be mapped to columns A, B, C...)
  */
+
+// Helper: format Date to DD/MM/YYYY HH:mm:ss in Asia/Bangkok timezone
+function formatBangkokDateTime(val: Date): string {
+    const pad = (n: number) => n.toString().padStart(2, "0");
+
+    // Use Intl API to get time in Asia/Bangkok regardless of server timezone
+    const parts = new Intl.DateTimeFormat("th-TH", {
+        timeZone: "Asia/Bangkok",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).formatToParts(val);
+
+    const get = (type: string) => parts.find(p => p.type === type)?.value ?? "00";
+
+    const day = get("day");
+    const month = get("month");
+    const year = get("year");
+    const hour = get("hour");
+    const minute = get("minute");
+    const second = get("second");
+
+    return `${pad(Number(day))}/${pad(Number(month))}/${year} ${pad(Number(hour))}:${pad(Number(minute))}:${pad(Number(second))}`;
+}
+
 export async function appendToSheet(rowData: unknown[]) {
     try {
         const sheets = await getGoogleSheetsClient();
@@ -108,24 +137,25 @@ export async function appendToSheet(rowData: unknown[]) {
             return false;
         }
 
-        // Fetch the spreadsheet metadata to get the actual name of the first sheet
-        // This avoids issues with different languages (Sheet1 vs แผ่นที่ 1)
-        const metaData = await sheets.spreadsheets.get({
-            spreadsheetId
-        });
-
-        const firstSheetName = metaData.data.sheets?.[0]?.properties?.title;
-        if (!firstSheetName) {
-            console.error("Could not determine the name of the first sheet");
+        // Fetch the spreadsheet metadata and prefer the sheet named "เคสที่แจ้งมาแล้ว"
+        const metaData = await sheets.spreadsheets.get({ spreadsheetId });
+        const allSheets = metaData.data.sheets ?? [];
+        const mainSheet =
+            allSheets.find(s => s.properties?.title === "เคสที่แจ้งมาแล้ว") ??
+            allSheets[0];
+        const mainSheetName = mainSheet?.properties?.title;
+        if (!mainSheetName) {
+            console.error("Could not determine the main sheet name");
             return false;
         }
 
-        // Auto-write headers if row 1 is empty (e.g. brand-new sheet)
-        await ensureSheetHeaders(sheets, spreadsheetId, firstSheetName);
+        // Auto-write headers / format sheet if needed
+        await ensureSheetHeaders(sheets, spreadsheetId, mainSheetName);
 
-        // Format dates to strings if any
-        const formattedData = rowData.map(val => {
+        // แปลงค่าวันที่เป็นสตริงเวลาไทย และบังคับให้เป็น "ข้อความ" ในชีต (ใส่ ' นำหน้า)
+        const formattedData = rowData.map((val, idx) => {
             if (val instanceof Date) {
+<<<<<<< HEAD
                 // Return DD/MM/YYYY HH:mm:ss format 
                 const pad = (n: number) => n.toString().padStart(2, '0');
                 const d = val.getUTCDate();
@@ -135,6 +165,14 @@ export async function appendToSheet(rowData: unknown[]) {
                 const mm = pad(val.getUTCMinutes());
                 const ss = pad(val.getUTCSeconds());
                 return `${pad(d)}/${pad(m)}/${y} ${hh}:${mm}:${ss}`;
+=======
+                const formatted = formatBangkokDateTime(val);
+                // ถ้าเป็นคอลัมน์วันที่/เวลา ให้ใส่ ' นำหน้าเพื่อไม่ให้กลายเป็นตัวเลข 46094.x
+                if (idx === SHEET_COLUMNS.DATE) {
+                    return `'${formatted}`;
+                }
+                return formatted;
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             }
             if (val === null || val === undefined) {
                 return "";
@@ -142,10 +180,10 @@ export async function appendToSheet(rowData: unknown[]) {
             return String(val);
         });
 
-        // Use the dynamically fetched sheet name
+        // Use the dynamically selected main sheet name
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId,
-            range: `'${firstSheetName}'!A:Z`, // Append to the first available row in the specified sheet
+            range: `'${mainSheetName}'!A:Z`, // Append to the first available row in the specified sheet
             valueInputOption: "USER_ENTERED", // Parses dates and numbers like user typing them
             insertDataOption: "INSERT_ROWS",
             requestBody: {
@@ -184,6 +222,42 @@ export async function ensureSheetHeaders(sheets: Awaited<ReturnType<typeof getGo
                 requestBody: { values: [SHEET_HEADERS] },
             });
             console.log("[Google Sheets] Header row written automatically.");
+        }
+
+        // ถ้าเป็นชีตหลักชื่อ "เคสที่แจ้งมาแล้ว" ให้บังคับฟอร์แมตคอลัมน์ A เป็นวันที่/เวลา
+        if (sheetName === "เคสที่แจ้งมาแล้ว") {
+            const meta = await sheets.spreadsheets.get({ spreadsheetId });
+            const sheet = meta.data.sheets?.find(s => s.properties?.title === sheetName);
+            const sheetId = sheet?.properties?.sheetId;
+
+            if (sheetId !== undefined) {
+                await sheets.spreadsheets.batchUpdate({
+                    spreadsheetId,
+                    requestBody: {
+                        requests: [
+                            {
+                                repeatCell: {
+                                    range: {
+                                        sheetId,
+                                        startRowIndex: 1, // ข้ามแถวหัวตาราง
+                                        startColumnIndex: SHEET_COLUMNS.DATE,      // คอลัมน์ A
+                                        endColumnIndex: SHEET_COLUMNS.DATE + 1,
+                                    },
+                                    cell: {
+                                        userEnteredFormat: {
+                                            numberFormat: {
+                                                type: "DATE_TIME",
+                                                pattern: "dd/MM/yyyy HH:mm:ss",
+                                            },
+                                        },
+                                    },
+                                    fields: "userEnteredFormat.numberFormat",
+                                },
+                            },
+                        ],
+                    },
+                });
+            }
         }
     } catch (e) {
         console.warn("[Google Sheets] Could not ensure headers:", e);
@@ -338,10 +412,10 @@ export async function appendAttachmentToSheet(rowData: unknown[]) {
                 // Add Headers to the new sheet
                 await sheets.spreadsheets.values.append({
                     spreadsheetId,
-                    range: `'Attachments'!A:E`,
+                    range: `'Attachments'!A:F`,
                     valueInputOption: "USER_ENTERED",
                     requestBody: {
-                        values: [["วันที่/เวลา", "Case ID", "เบอร์โทร", "ชื่อไฟล์", "URL/ลิงก์ไฟล์"]],
+                        values: [["วันที่/เวลา", "Case ID", "เบอร์โทร", "ชื่อไฟล์", "URL/ลิงก์ไฟล์", "ผู้ส่ง"]],
                     },
                 });
 
@@ -357,7 +431,7 @@ export async function appendAttachmentToSheet(rowData: unknown[]) {
                                             startRowIndex: 0,
                                             endRowIndex: 1,
                                             startColumnIndex: 0,
-                                            endColumnIndex: 5
+                                            endColumnIndex: 6
                                         },
                                         cell: {
                                             userEnteredFormat: {
@@ -384,9 +458,10 @@ export async function appendAttachmentToSheet(rowData: unknown[]) {
             }
         }
 
-        // Format dates to strings if any
-        const formattedData = rowData.map(val => {
+        // สำหรับชีต Attachments ให้ใช้เวลาไทยปัจจุบันเท่านั้น
+        const formattedData = rowData.map((val, idx) => {
             if (val instanceof Date) {
+<<<<<<< HEAD
                 const pad = (n: number) => n.toString().padStart(2, '0');
                 const d = val.getUTCDate();
                 const m = val.getUTCMonth() + 1;
@@ -395,6 +470,13 @@ export async function appendAttachmentToSheet(rowData: unknown[]) {
                 const mm = pad(val.getUTCMinutes());
                 const ss = pad(val.getUTCSeconds());
                 return `${pad(d)}/${pad(m)}/${y} ${hh}:${mm}:${ss}`;
+=======
+                const formatted = formatBangkokDateTime(val);
+                if (idx === 0) {
+                    return `'${formatted}`;
+                }
+                return formatted;
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             }
             if (val === null || val === undefined) return "";
             return String(val);

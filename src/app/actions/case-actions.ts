@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { createCaseSchema, type CreateCaseInput, csatSchema, type CSATInput } from "@/lib/validations";
 import { generateTrackingCode, getPriorityLabel, getStatusLabel, formatDateForCaseNo } from "@/lib/utils";
-import { sendLineNotify } from "@/lib/line-notify";
-import { appendToSheet, updateSheetCaseStatus, SHEET_COLUMNS } from "@/lib/google-sheets";
+import { sendLineNotification, sendLineNotify } from "@/lib/line-notify";
+import { appendToSheet, updateSheetCaseStatus, SHEET_COLUMNS, appendAttachmentToSheet } from "@/lib/google-sheets";
 import { CaseStatus, ActionType, Channel } from "@prisma/client";
 
 export async function createCase(input: CreateCaseInput) {
@@ -68,7 +68,7 @@ export async function createCase(input: CreateCaseInput) {
         const dbDateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD for DailySequence key
 
         // Use Prisma transaction to ensure atomic increment of the daily sequence
-        const sequence = await prisma.$transaction(async (tx: any) => {
+        const sequence = await prisma.$transaction(async (tx) => {
             const seq = await tx.dailySequence.upsert({
                 where: { date: dbDateStr },
                 update: { lastCount: { increment: 1 } },
@@ -123,9 +123,23 @@ export async function createCase(input: CreateCaseInput) {
             },
         });
 
-        // Send LINE Notify
-        const lineMsg = `🚨มีเคสใหม่เข้าสู่ระบบ!🚨\nเลขที่: ${caseNo}\nหัวข้อ: ${data.problemSummary}\nความเร่งด่วน: ${priority}\nผู้แจ้ง: ${data.fullName}\nตรวจสอบได้ที่ระบบ HealthHelp`;
-        await sendLineNotify(lineMsg);
+        // Send LINE push notification for a newly created case.
+        // This must not break the main save flow if LINE is unavailable.
+        const lineMsg =
+            "🚨 มีแจ้งปัญหาใหม่!\n" +
+            `เลขที่เคส: ${caseNo}\n` +
+            `หัวข้อ: ${data.problemSummary}\n` +
+            `ผู้แจ้ง: ${data.fullName}\n` +
+            `เบอร์ติดต่อ: ${data.phone}\n` +
+            `หมวดหมู่: ${category?.name || "ไม่ระบุ"}\n` +
+            `ความเร่งด่วน: ${getPriorityLabel(priority)}\n` +
+            `รหัสติดตาม: ${trackingCode}`;
+
+        try {
+            await sendLineNotification(lineMsg);
+        } catch (lineError) {
+            console.error("LINE push notification error:", lineError);
+        }
 
         // Build the row matching SHEET_COLUMNS order exactly:
         // [DATE, CASE_NO, TRACKING, NAME, PHONE, EMAIL, ADDRESS, LINE_ID, CATEGORY, PRIORITY, STATUS, SUBJECT, DETAIL, ASSIGNEE, HOSPITAL, HOSP_CODE]
@@ -282,12 +296,19 @@ export async function addPublicCaseUpdate(
     attachments?: { fileName: string; fileUrl: string; fileType: string; fileSize: number }[]
 ) {
     try {
-        const caseData = await prisma.case.findUnique({ where: { trackingCode } });
+        const caseData = await prisma.case.findUnique({
+            where: { trackingCode },
+            include: { reporter: true },
+        });
         if (!caseData) return { success: false, error: "ไม่พบเคส" };
 
         const finalNote = note.trim() || (attachments && attachments.length > 0 ? "ส่งไฟล์แนบ/รูปภาพเพิ่มเติม" : "");
 
+<<<<<<< HEAD
         const update = await prisma.caseUpdate.create({
+=======
+        await prisma.caseUpdate.create({
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             data: {
                 caseId: caseData.id,
                 actionType: ActionType.COMMENT,
@@ -306,6 +327,21 @@ export async function addPublicCaseUpdate(
                     : {}),
             },
         });
+
+        // ถ้ามีไฟล์แนบจากผู้ใช้งาน ให้ sync ไปยัง Google Sheets แท็บ Attachments ด้วย (เหมือนฝั่งแอดมิน)
+        if (attachments && attachments.length > 0) {
+            for (const att of attachments) {
+                const sheetData = [
+                    new Date(),
+                    caseData.caseNo,
+                    caseData.reporter.phone,
+                    att.fileName,
+                    att.fileUrl,
+                    caseData.reporter.fullName, // ผู้ส่ง = ผู้แจ้งเคส
+                ];
+                appendAttachmentToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
+            }
+        }
 
         // Notify admins if user replies
         const lineMsg = `💬 ผู้แจ้งตอบกลับเคส!\nเลขที่: ${caseData.caseNo}\nข้อความ: ${finalNote}${attachments && attachments.length > 0 ? `\n📎 แนบไฟล์ ${attachments.length} ไฟล์` : ""}\nตรวจสอบได้ที่ระบบ HealthHelp`;

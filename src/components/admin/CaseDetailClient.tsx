@@ -21,6 +21,10 @@ import {
     Paperclip,
     X,
     FileText,
+<<<<<<< HEAD
+=======
+    Trash2,
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
 } from "lucide-react";
 import {
     getStatusLabel,
@@ -76,6 +80,29 @@ interface StaffUser {
     role: string;
 }
 
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+    return (
+        <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+            onClick={onClose}
+        >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={src}
+                alt={alt}
+                className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            />
+            <button
+                onClick={onClose}
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-xl font-bold transition-colors"
+            >
+                ✕
+            </button>
+        </div>
+    );
+}
+
 export function CaseDetailClient({
     caseData,
     staffUsers,
@@ -84,6 +111,9 @@ export function CaseDetailClient({
     staffUsers: StaffUser[];
 }) {
     const router = useRouter();
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; fileName: string } | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [internalNote, setInternalNote] = useState("");
     const [publicNote, setPublicNote] = useState("");
     const [newStatus, setNewStatus] = useState("");
@@ -137,16 +167,49 @@ export function CaseDetailClient({
     }
 
     async function handleSubmitPublic() {
-        if (!publicNote.trim()) return;
+        if (!publicNote.trim() && publicFiles.length === 0) return;
         setSubmittingPublic(true);
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
+<<<<<<< HEAD
         await addCaseUpdate(caseData.id, user.id, publicNote.trim(), undefined, true, []);
+=======
+
+        let uploadedAttachments: any[] = [];
+
+        // ถ้ามีไฟล์ให้ upload ก่อน แล้วสร้างข้อความเดียวที่มีทั้งข้อความและไฟล์ (เหมือนแชท)
+        if (publicFiles.length > 0) {
+            setUploadingFiles(true);
+            try {
+                const formData = new FormData();
+                publicFiles.forEach((file) => formData.append("files", file));
+                const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+                if (!uploadRes.ok) throw new Error("Upload failed");
+                const uploadData = await uploadRes.json();
+                uploadedAttachments = (uploadData.files || []).map((f: any) => ({
+                    ...f,
+                    fileSize: f.fileSize || 0,
+                }));
+            } catch (error) {
+                console.error("File upload error:", error);
+                toast.error("อัปโหลดไฟล์ไม่สำเร็จ");
+                setSubmittingPublic(false);
+                setUploadingFiles(false);
+                return;
+            }
+            setUploadingFiles(false);
+        }
+
+        const finalNote = publicNote.trim();
+        await addCaseUpdate(caseData.id, user.id, finalNote, undefined, true, uploadedAttachments);
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         setPublicNote("");
+        setPublicFiles([]);
         setSubmittingPublic(false);
         toast.success("ส่งข้อความถึงผู้แจ้งสำเร็จ");
         router.refresh();
     }
 
+<<<<<<< HEAD
     /* ==== ส่งไฟล์เป็น bubble ใหม่แยก (ฝั่งแอดมิน) ==== */
     async function handleSendFileOnlyAdmin(files: File[]) {
         if (files.length === 0) return;
@@ -166,6 +229,29 @@ export function CaseDetailClient({
             toast.error("อัปโหลดไฟล์ไม่สำเร็จ");
         }
         setUploadingFiles(false);
+=======
+    async function handleDeleteAttachment() {
+        if (!deleteConfirm) return;
+        setDeletingId(deleteConfirm.id);
+        const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
+        try {
+            const res = await fetch(`/api/attachment/${deleteConfirm.id}`, {
+                method: "DELETE",
+                headers: { "x-user-id": user.id || "" },
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("ลบไฟล์สำเร็จ");
+                setDeleteConfirm(null);
+                router.refresh();
+            } else {
+                toast.error(data.error || "เกิดข้อผิดพลาดในการลบ");
+            }
+        } catch {
+            toast.error("เกิดข้อผิดพลาดในการลบ");
+        }
+        setDeletingId(null);
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
     }
 
     async function handleAssign(assigneeId: string) {
@@ -202,6 +288,51 @@ export function CaseDetailClient({
 
     return (
         <div className="space-y-6">
+            {/* Lightbox */}
+            {lightboxSrc && (
+                <ImageLightbox
+                    src={lightboxSrc}
+                    alt="รูปขยาย"
+                    onClose={() => setLightboxSrc(null)}
+                />
+            )}
+
+            {/* Delete Confirm Dialog */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+                    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-7 sm:p-8 max-w-xl w-full shadow-2xl">
+                        <div className="flex items-center gap-4 mb-5">
+                            <div className="w-14 h-14 rounded-2xl bg-red-500/20 flex items-center justify-center shrink-0">
+                                <Trash2 className="w-7 h-7 text-red-400" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white">ยืนยันการลบไฟล์</h3>
+                        </div>
+                        <p className="text-slate-300 text-lg mb-3">แน่ใจหรือไม่ที่จะลบไฟล์นี้?</p>
+                        <p className="text-slate-300 text-sm sm:text-base bg-slate-900/50 px-4 py-3 rounded-xl mb-5 break-all">
+                            📎 {deleteConfirm.fileName}
+                        </p>
+                        <p className="text-red-400 text-sm sm:text-base leading-relaxed mb-6">⚠ ไฟล์จะถูกลบออกจากเว็บ, โฟลเดอร์ และชีต Google Sheets ถาวร กู้คืนไม่ได้</p>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                disabled={!!deletingId}
+                                className="flex-1 px-5 py-3.5 rounded-2xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-lg font-semibold transition-colors disabled:opacity-50"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                onClick={handleDeleteAttachment}
+                                disabled={!!deletingId}
+                                className="flex-1 px-5 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2.5"
+                            >
+                                {deletingId ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                                ลบไฟล์
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -269,6 +400,7 @@ export function CaseDetailClient({
                                                     {u.note && <p className="text-sm sm:text-base leading-relaxed">{u.note}</p>}
                                                     {u.attachments && u.attachments.length > 0 && (
                                                         <div className="mt-3 flex flex-col gap-2">
+<<<<<<< HEAD
                                                             {u.attachments.map((file, idx) => {
                                                                 if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
                                                                     return (
@@ -295,6 +427,20 @@ export function CaseDetailClient({
                                                                     return (
                                                                         <a
                                                                             key={idx}
+=======
+                                                            {u.attachments.map((file, idx) => (
+                                                                <div key={idx} className="relative group/file w-fit">
+                                                                    {file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                                        <img
+                                                                            src={file.fileUrl}
+                                                                            alt={file.fileName}
+                                                                            className="max-w-[220px] max-h-[220px] object-cover rounded-xl shadow-md border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                                                            onClick={() => setLightboxSrc(file.fileUrl)}
+                                                                        />
+                                                                    ) : (
+                                                                        <a
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                             href={file.fileUrl}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
@@ -304,9 +450,26 @@ export function CaseDetailClient({
                                                                             <FileText className="w-4 h-4 shrink-0 text-indigo-500" />
                                                                             <span className="truncate max-w-[250px] text-slate-700">{file.fileName}</span>
                                                                         </a>
+<<<<<<< HEAD
                                                                     );
                                                                 }
                                                             })}
+=======
+                                                                    )}
+                                                                    {/* ปุ่มลบ - เฉพาะ ADMIN/SUPERVISOR */}
+                                                                    {canAssign && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setDeleteConfirm({ id: file.id, fileName: file.fileName })}
+                                                                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity shadow-md hover:bg-red-700"
+                                                                            title="ลบไฟล์นี้"
+                                                                        >
+                                                                            <Trash2 className="w-3 h-3" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                         </div>
                                                     )}
                                                 </div>
@@ -364,6 +527,7 @@ export function CaseDetailClient({
                                                     )}
                                                     {u.attachments && u.attachments.length > 0 && (
                                                         <div className="mt-3 flex flex-col gap-2 items-end">
+<<<<<<< HEAD
                                                             {u.attachments.map((file: any, idx: number) => {
                                                                 if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
                                                                     return (
@@ -390,6 +554,20 @@ export function CaseDetailClient({
                                                                     return (
                                                                         <a
                                                                             key={idx}
+=======
+                                                            {u.attachments.map((file: any, idx: number) => (
+                                                                <div key={idx} className="relative group/file">
+                                                                    {file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                                        <img
+                                                                            src={file.fileUrl}
+                                                                            alt={file.fileName}
+                                                                            className="max-w-[220px] max-h-[220px] object-cover rounded-xl shadow-md border border-indigo-500/30 cursor-zoom-in hover:opacity-90 transition-opacity"
+                                                                            onClick={() => setLightboxSrc(file.fileUrl)}
+                                                                        />
+                                                                    ) : (
+                                                                        <a
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                             href={file.fileUrl}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
@@ -399,9 +577,26 @@ export function CaseDetailClient({
                                                                             <FileText className="w-4 h-4 shrink-0" />
                                                                             <span className="truncate max-w-[250px]">{file.fileName}</span>
                                                                         </a>
+<<<<<<< HEAD
                                                                     );
                                                                 }
                                                             })}
+=======
+                                                                    )}
+                                                                    {/* ปุ่มลบ - เฉพาะ ADMIN/SUPERVISOR */}
+                                                                    {canAssign && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setDeleteConfirm({ id: file.id, fileName: file.fileName })}
+                                                                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity shadow-md hover:bg-red-700"
+                                                                            title="ลบไฟล์นี้"
+                                                                        >
+                                                                            <Trash2 className="w-3 h-3" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                         </div>
                                                     )}
                                                 </div>
@@ -439,13 +634,18 @@ export function CaseDetailClient({
                                     />
                                     <button
                                         onClick={handleSubmitPublic}
+<<<<<<< HEAD
                                         disabled={!publicNote.trim() || submittingPublic}
+=======
+                                        disabled={(!publicNote.trim() && publicFiles.length === 0) || submittingPublic || uploadingFiles}
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                         className="btn-primary h-auto px-4 py-2.5 flex items-center gap-1.5 min-h-[52px] text-sm disabled:opacity-50"
                                     >
                                         {submittingPublic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                         ส่ง
                                     </button>
                                 </div>
+<<<<<<< HEAD
                                 {/* File-only send as separate bubble */}
                                 <label className={`flex items-center justify-center gap-2 w-full py-2.5 border-2 border-dashed rounded-xl cursor-pointer transition-all text-xs font-semibold select-none ${uploadingFiles
                                         ? "border-indigo-700 bg-indigo-900/20 text-indigo-500 pointer-events-none"
@@ -455,6 +655,51 @@ export function CaseDetailClient({
                                         <><Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังส่งไฟล์...</>
                                     ) : (
                                         <><Paperclip className="w-3.5 h-3.5" /> ส่งรูป/ไฟล์</>
+=======
+
+                                {/* แสดงไฟล์ที่เลือกแนบ (ฝั่งแอดมิน → ผู้ใช้งาน) */}
+                                {publicFiles.length > 0 && (
+                                    <div className="mb-2 flex flex-wrap gap-3">
+                                        {publicFiles.map((f, i) => (
+                                            <div key={i} className="relative group">
+                                                {f.type.startsWith("image/") ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img
+                                                        src={URL.createObjectURL(f)}
+                                                        alt={f.name}
+                                                        className="w-16 h-16 object-cover rounded-lg border border-indigo-400/60 shadow-sm"
+                                                    />
+                                                ) : (
+                                                    <div className="w-16 h-16 bg-slate-900 rounded-lg border border-indigo-500/40 flex flex-col items-center justify-center gap-1">
+                                                        <FileText className="w-4 h-4 text-indigo-300" />
+                                                        <span className="text-[8px] text-indigo-200 px-1 text-center truncate w-full">
+                                                            {f.name}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePublicFile(i)}
+                                                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* แนบไฟล์ (จะส่งพร้อมข้อความเมื่อกดปุ่ม "ส่ง") */}
+                                <label className={`flex items-center justify-center gap-2 w-full py-2.5 border-2 border-dashed rounded-xl cursor-pointer transition-all text-xs font-semibold select-none ${
+                                        uploadingFiles
+                                            ? "border-indigo-700 bg-indigo-900/20 text-indigo-500 pointer-events-none"
+                                            : "border-indigo-600/60 bg-transparent text-indigo-400 hover:bg-indigo-900/30 hover:border-indigo-500 hover:text-indigo-300"
+                                    }`}>
+                                    {uploadingFiles ? (
+                                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังอัปโหลดไฟล์...</>
+                                    ) : (
+                                        <><Paperclip className="w-3.5 h-3.5" /> แนบรูป/ไฟล์</>
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                     )}
                                     <input
                                         type="file"
@@ -463,9 +708,15 @@ export function CaseDetailClient({
                                         disabled={uploadingFiles}
                                         onChange={(e) => {
                                             if (e.target.files && e.target.files.length > 0) {
+<<<<<<< HEAD
                                                 handleSendFileOnlyAdmin(Array.from(e.target.files));
                                             }
                                             e.target.value = '';
+=======
+                                                setPublicFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                                            }
+                                            e.target.value = "";
+>>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                         }}
                                     />
                                 </label>
