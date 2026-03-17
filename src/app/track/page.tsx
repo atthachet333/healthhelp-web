@@ -16,11 +16,8 @@ import {
     Loader2,
     Phone,
     FileText,
-<<<<<<< HEAD
     Paperclip,
     X,
-=======
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
     ImageIcon,
     Send,
 } from "lucide-react";
@@ -101,11 +98,6 @@ export default function TrackPage() {
     async function handleUserReply() {
         if (!caseData || (!userReply.trim() && userFiles.length === 0)) return;
         setSubmittingReply(true);
-<<<<<<< HEAD
-        const res = await addPublicCaseUpdate(caseData.trackingCode, userReply, []);
-        if (res.success) {
-            setUserReply("");
-=======
 
         let uploadedAttachments: any[] = [];
 
@@ -135,7 +127,6 @@ export default function TrackPage() {
         if (res.success) {
             setUserReply("");
             setUserFiles([]);
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             const data = await getCaseByTracking(caseData.trackingCode);
             if (data) setCaseData(data);
         } else {
@@ -359,15 +350,6 @@ export default function TrackPage() {
                             </div>
 
                             {/* Timeline */}
-<<<<<<< HEAD
-                            <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-6 sm:p-8 md:p-10 mb-6 sm:mb-8 w-full">
-                                {/* ── Conversation Timeline ── */}
-                                <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
-                                    {/* Header */}
-                                    <div className="bg-gradient-to-r from-indigo-600 to-teal-600 px-5 py-3 flex items-center gap-2">
-                                        <Clock className="w-5 h-5 text-white" />
-                                        <h4 className="text-base font-bold text-white tracking-wide">การสนทนาและไทม์ไลน์</h4>
-=======
                             <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 p-5 sm:p-7 mb-5 w-full">
                                 {/* ── Conversation Timeline ── */}
                                 <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
@@ -375,7 +357,6 @@ export default function TrackPage() {
                                     <div className="bg-gradient-to-r from-indigo-600 to-teal-600 px-6 py-4 flex items-center gap-3">
                                         <Clock className="w-6 h-6 text-white shrink-0" />
                                         <h4 className="text-lg font-bold text-white tracking-wide">การสนทนาและไทม์ไลน์</h4>
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                     </div>
                                     {/* Messages area */}
                                     <div className="bg-slate-50 p-4 space-y-6">
@@ -402,30 +383,6 @@ export default function TrackPage() {
                                                         </div>
                                                         {/* Bubble */}
                                                         <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-none px-5 py-4 shadow-lg border-2 border-indigo-700">
-<<<<<<< HEAD
-                                                            <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>
-                                                            {u.attachments && u.attachments.length > 0 && (
-                                                                <div className="mt-3 flex flex-col gap-2">
-                                                                    {u.attachments.map((file: any, idx: number) => (
-                                                                        <a
-                                                                            key={idx}
-                                                                            href={file.fileUrl}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="flex items-center gap-2 text-xs bg-indigo-800/50 hover:bg-indigo-700/50 text-indigo-100 px-3 py-2 rounded-lg border border-indigo-500/30 transition-colors w-fit max-w-[200px]"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        >
-                                                                            {file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i) ? (
-                                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                                <img src={file.fileUrl} alt={file.fileName} className="mt-1 max-w-[150px] max-h-[150px] object-cover rounded shadow" />
-                                                                            ) : (
-                                                                                <>
-                                                                                    <FileText className="w-4 h-4 shrink-0" />
-                                                                                    <span className="truncate">{file.fileName}</span>
-                                                                                </>
-                                                                            )}
-                                                                        </a>
-=======
                                                             {u.note && <p className="text-base sm:text-lg leading-relaxed font-medium">{u.note}</p>}
                                                             {u.attachments && u.attachments.length > 0 && (
                                                                 <div className="mt-3 flex flex-col gap-2">
@@ -452,7 +409,6 @@ export default function TrackPage() {
                                                                                 <span className="truncate max-w-[200px]">{file.fileName}</span>
                                                                             </a>
                                                                         )
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -510,23 +466,15 @@ export default function TrackPage() {
                                                             {u.attachments && u.attachments.length > 0 && (
                                                                 <div className="mt-3 flex flex-col gap-2">
                                                                     {u.attachments.map((file: any, idx: number) => {
-<<<<<<< HEAD
-                                                                        if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
-=======
                                                                         if (file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                             return (
                                                                                 // eslint-disable-next-line @next/next/no-img-element
                                                                                 <img
                                                                                     key={idx}
                                                                                     src={file.fileUrl}
                                                                                     alt={file.fileName}
-<<<<<<< HEAD
-                                                                                    className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-black/20 cursor-pointer hover:opacity-90 transition-opacity"
-=======
                                                                                     className="max-w-[220px] max-h-[220px] object-cover rounded-xl shadow-md border border-black/20 cursor-zoom-in hover:opacity-90 transition-opacity"
                                                                                     onClick={() => setLightboxSrc(file.fileUrl)}
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                                 />
                                                                             );
                                                                         } else if (file.fileUrl.match(/\.pdf$/i)) {
@@ -576,11 +524,7 @@ export default function TrackPage() {
                                             <h4 className="text-base font-bold text-white">ตอบกลับ / ให้ข้อมูลเพิ่มเติม</h4>
                                         </div>
                                         <div className="p-4">
-<<<<<<< HEAD
-                                            {/* Text area + Send text button */}
-=======
                                             {/* Text area + Send button */}
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                             <div className="flex gap-2 items-end mb-3">
                                                 <textarea
                                                     value={userReply}
@@ -590,30 +534,14 @@ export default function TrackPage() {
                                                 />
                                                 <button
                                                     onClick={handleUserReply}
-<<<<<<< HEAD
-                                                    disabled={!userReply.trim() || submittingReply}
-                                                    className="btn-primary px-5 py-3 text-base font-bold flex items-center gap-2 self-end disabled:opacity-50 min-h-[52px]"
-=======
                                                     disabled={(!userReply.trim() && userFiles.length === 0) || submittingReply || uploadingUserFiles}
                                                     className="btn-primary px-6 py-3.5 text-lg font-bold flex items-center gap-2 self-end disabled:opacity-50 min-h-[56px] rounded-2xl"
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                 >
                                                     {submittingReply ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                                                     ส่ง
                                                 </button>
                                             </div>
 
-<<<<<<< HEAD
-                                            {/* Divider */}
-                                            <div className="flex items-center gap-3 my-3">
-                                                <hr className="flex-1 border-indigo-200" />
-                                                <span className="text-xs text-indigo-400 font-semibold">หรือแนบรูป / ไฟล์</span>
-                                                <hr className="flex-1 border-indigo-200" />
-                                            </div>
-
-                                            {/* File-only send: pick & instantly send as separate bubble */}
-                                            <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer transition-all font-semibold text-sm select-none ${
-=======
                                             {/* แสดงไฟล์ที่เลือกแนบ (preview) */}
                                             {userFiles.length > 0 && (
                                                 <div className="mb-3 flex flex-wrap gap-3">
@@ -655,21 +583,14 @@ export default function TrackPage() {
 
                                             {/* เลือกไฟล์แนบ */}
                                             <label className={`flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed rounded-2xl cursor-pointer transition-all font-semibold text-base select-none ${
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                 uploadingUserFiles
                                                     ? "border-indigo-300 bg-indigo-100 text-indigo-400 pointer-events-none"
                                                     : "border-indigo-400 bg-white text-indigo-600 hover:bg-indigo-50 hover:border-indigo-500"
                                             }`}>
                                                 {uploadingUserFiles ? (
-<<<<<<< HEAD
-                                                    <><Loader2 className="w-4 h-4 animate-spin" /> กำลังอัปโหลด...</>
-                                                ) : (
-                                                    <><ImageIcon className="w-4 h-4" /> 📎 แนบรูป / ไฟล์ (ส่งเป็นข้อความใหม่ทันที)</>
-=======
                                                     <><Loader2 className="w-5 h-5 animate-spin" /> กำลังอัปโหลด...</>
                                                 ) : (
                                                     <><ImageIcon className="w-5 h-5" /> 📎 แนบรูป / ไฟล์</>
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                 )}
                                                 <input
                                                     type="file"
@@ -680,11 +601,7 @@ export default function TrackPage() {
                                                     onChange={(e) => {
                                                         if (e.target.files && e.target.files.length > 0) {
                                                             const files = Array.from(e.target.files);
-<<<<<<< HEAD
-                                                            handleSendFileOnly(files);
-=======
                                                             setUserFiles(prev => [...prev, ...files]);
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                         }
                                                         e.target.value = '';
                                                     }}

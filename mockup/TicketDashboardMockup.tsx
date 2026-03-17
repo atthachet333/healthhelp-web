@@ -152,7 +152,7 @@ export default function TicketDashboardMockup() {
                             {kpis.map((item) => (
                                 <div
                                     key={item.label}
-                                    className={`rounded-3xl border bg-gradient-to-br p-5 shadow-xl shadow-black/10 ${toneMap[item.tone]}`}
+                                    className={`rounded-3xl border bg-gradient-to-br p-5 shadow-xl shadow-black/10 ${toneMap[item.tone as keyof typeof toneMap]}`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>

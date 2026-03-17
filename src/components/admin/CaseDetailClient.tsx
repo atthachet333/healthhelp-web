@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,10 +21,7 @@ import {
     Paperclip,
     X,
     FileText,
-<<<<<<< HEAD
-=======
     Trash2,
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
 } from "lucide-react";
 import {
     getStatusLabel,
@@ -34,7 +31,7 @@ import {
     formatDateTime,
     getChannelLabel,
 } from "@/lib/utils";
-import { addCaseUpdate, assignCase } from "@/app/actions/admin-actions";
+import { addCaseUpdate, assignCase, deleteAttachment } from "@/app/actions/admin-actions";
 import { toast } from "react-hot-toast";
 
 interface CaseData {
@@ -170,9 +167,6 @@ export function CaseDetailClient({
         if (!publicNote.trim() && publicFiles.length === 0) return;
         setSubmittingPublic(true);
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
-<<<<<<< HEAD
-        await addCaseUpdate(caseData.id, user.id, publicNote.trim(), undefined, true, []);
-=======
 
         let uploadedAttachments: any[] = [];
 
@@ -201,7 +195,6 @@ export function CaseDetailClient({
 
         const finalNote = publicNote.trim();
         await addCaseUpdate(caseData.id, user.id, finalNote, undefined, true, uploadedAttachments);
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         setPublicNote("");
         setPublicFiles([]);
         setSubmittingPublic(false);
@@ -209,7 +202,6 @@ export function CaseDetailClient({
         router.refresh();
     }
 
-<<<<<<< HEAD
     /* ==== ส่งไฟล์เป็น bubble ใหม่แยก (ฝั่งแอดมิน) ==== */
     async function handleSendFileOnlyAdmin(files: File[]) {
         if (files.length === 0) return;
@@ -229,29 +221,31 @@ export function CaseDetailClient({
             toast.error("อัปโหลดไฟล์ไม่สำเร็จ");
         }
         setUploadingFiles(false);
-=======
+    }
+
     async function handleDeleteAttachment() {
         if (!deleteConfirm) return;
-        setDeletingId(deleteConfirm.id);
+
         const user = JSON.parse(localStorage.getItem("healthhelp_user") || "{}");
+        setDeletingId(deleteConfirm.id);
+
         try {
-            const res = await fetch(`/api/attachment/${deleteConfirm.id}`, {
-                method: "DELETE",
-                headers: { "x-user-id": user.id || "" },
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success("ลบไฟล์สำเร็จ");
-                setDeleteConfirm(null);
-                router.refresh();
-            } else {
-                toast.error(data.error || "เกิดข้อผิดพลาดในการลบ");
+            const result = await deleteAttachment(deleteConfirm.id, user.id);
+
+            if (!result.success) {
+                toast.error(result.error || "เกิดข้อผิดพลาดในการลบ");
+                return;
             }
-        } catch {
+
+            toast.success("ลบไฟล์สำเร็จ");
+            setDeleteConfirm(null);
+            router.refresh();
+        } catch (error) {
+            console.error("Delete attachment error:", error);
             toast.error("เกิดข้อผิดพลาดในการลบ");
+        } finally {
+            setDeletingId(null);
         }
-        setDeletingId(null);
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
     }
 
     async function handleAssign(assigneeId: string) {
@@ -400,34 +394,6 @@ export function CaseDetailClient({
                                                     {u.note && <p className="text-sm sm:text-base leading-relaxed">{u.note}</p>}
                                                     {u.attachments && u.attachments.length > 0 && (
                                                         <div className="mt-3 flex flex-col gap-2">
-<<<<<<< HEAD
-                                                            {u.attachments.map((file, idx) => {
-                                                                if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
-                                                                    return (
-                                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                                        <img
-                                                                            key={idx}
-                                                                            src={file.fileUrl}
-                                                                            alt={file.fileName}
-                                                                            className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-slate-200 cursor-pointer hover:opacity-90 transition-opacity"
-                                                                        />
-                                                                    );
-                                                                } else if (file.fileUrl.match(/\.pdf$/i)) {
-                                                                    return (
-                                                                        <embed
-                                                                            key={idx}
-                                                                            src={file.fileUrl}
-                                                                            type="application/pdf"
-                                                                            width="300"
-                                                                            height="400"
-                                                                            className="border border-slate-200 rounded-lg shadow-md"
-                                                                        />
-                                                                    );
-                                                                } else {
-                                                                    return (
-                                                                        <a
-                                                                            key={idx}
-=======
                                                             {u.attachments.map((file, idx) => (
                                                                 <div key={idx} className="relative group/file w-fit">
                                                                     {file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
@@ -440,7 +406,6 @@ export function CaseDetailClient({
                                                                         />
                                                                     ) : (
                                                                         <a
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                             href={file.fileUrl}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
@@ -450,11 +415,6 @@ export function CaseDetailClient({
                                                                             <FileText className="w-4 h-4 shrink-0 text-indigo-500" />
                                                                             <span className="truncate max-w-[250px] text-slate-700">{file.fileName}</span>
                                                                         </a>
-<<<<<<< HEAD
-                                                                    );
-                                                                }
-                                                            })}
-=======
                                                                     )}
                                                                     {/* ปุ่มลบ - เฉพาะ ADMIN/SUPERVISOR */}
                                                                     {canAssign && (
@@ -469,7 +429,6 @@ export function CaseDetailClient({
                                                                     )}
                                                                 </div>
                                                             ))}
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                         </div>
                                                     )}
                                                 </div>
@@ -527,34 +486,6 @@ export function CaseDetailClient({
                                                     )}
                                                     {u.attachments && u.attachments.length > 0 && (
                                                         <div className="mt-3 flex flex-col gap-2 items-end">
-<<<<<<< HEAD
-                                                            {u.attachments.map((file: any, idx: number) => {
-                                                                if (file.fileUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
-                                                                    return (
-                                                                        // eslint-disable-next-line @next/next/no-img-element
-                                                                        <img
-                                                                            key={idx}
-                                                                            src={file.fileUrl}
-                                                                            alt={file.fileName}
-                                                                            className="max-w-[300px] max-h-[300px] object-cover rounded-lg shadow-md border border-indigo-500/30 cursor-pointer hover:opacity-90 transition-opacity"
-                                                                        />
-                                                                    );
-                                                                } else if (file.fileUrl.match(/\.pdf$/i)) {
-                                                                    return (
-                                                                        <embed
-                                                                            key={idx}
-                                                                            src={file.fileUrl}
-                                                                            type="application/pdf"
-                                                                            width="300"
-                                                                            height="400"
-                                                                            className="border border-indigo-500/30 rounded-lg shadow-md"
-                                                                        />
-                                                                    );
-                                                                } else {
-                                                                    return (
-                                                                        <a
-                                                                            key={idx}
-=======
                                                             {u.attachments.map((file: any, idx: number) => (
                                                                 <div key={idx} className="relative group/file">
                                                                     {file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
@@ -567,7 +498,6 @@ export function CaseDetailClient({
                                                                         />
                                                                     ) : (
                                                                         <a
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                                             href={file.fileUrl}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
@@ -577,11 +507,6 @@ export function CaseDetailClient({
                                                                             <FileText className="w-4 h-4 shrink-0" />
                                                                             <span className="truncate max-w-[250px]">{file.fileName}</span>
                                                                         </a>
-<<<<<<< HEAD
-                                                                    );
-                                                                }
-                                                            })}
-=======
                                                                     )}
                                                                     {/* ปุ่มลบ - เฉพาะ ADMIN/SUPERVISOR */}
                                                                     {canAssign && (
@@ -596,7 +521,6 @@ export function CaseDetailClient({
                                                                     )}
                                                                 </div>
                                                             ))}
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                                         </div>
                                                     )}
                                                 </div>
@@ -634,28 +558,13 @@ export function CaseDetailClient({
                                     />
                                     <button
                                         onClick={handleSubmitPublic}
-<<<<<<< HEAD
-                                        disabled={!publicNote.trim() || submittingPublic}
-=======
                                         disabled={(!publicNote.trim() && publicFiles.length === 0) || submittingPublic || uploadingFiles}
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                         className="btn-primary h-auto px-4 py-2.5 flex items-center gap-1.5 min-h-[52px] text-sm disabled:opacity-50"
                                     >
                                         {submittingPublic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                         ส่ง
                                     </button>
                                 </div>
-<<<<<<< HEAD
-                                {/* File-only send as separate bubble */}
-                                <label className={`flex items-center justify-center gap-2 w-full py-2.5 border-2 border-dashed rounded-xl cursor-pointer transition-all text-xs font-semibold select-none ${uploadingFiles
-                                        ? "border-indigo-700 bg-indigo-900/20 text-indigo-500 pointer-events-none"
-                                        : "border-indigo-600/60 bg-transparent text-indigo-400 hover:bg-indigo-900/30 hover:border-indigo-500 hover:text-indigo-300"
-                                    }`}>
-                                    {uploadingFiles ? (
-                                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังส่งไฟล์...</>
-                                    ) : (
-                                        <><Paperclip className="w-3.5 h-3.5" /> ส่งรูป/ไฟล์</>
-=======
 
                                 {/* แสดงไฟล์ที่เลือกแนบ (ฝั่งแอดมิน → ผู้ใช้งาน) */}
                                 {publicFiles.length > 0 && (
@@ -699,7 +608,6 @@ export function CaseDetailClient({
                                         <><Loader2 className="w-3.5 h-3.5 animate-spin" /> กำลังอัปโหลดไฟล์...</>
                                     ) : (
                                         <><Paperclip className="w-3.5 h-3.5" /> แนบรูป/ไฟล์</>
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                     )}
                                     <input
                                         type="file"
@@ -708,15 +616,9 @@ export function CaseDetailClient({
                                         disabled={uploadingFiles}
                                         onChange={(e) => {
                                             if (e.target.files && e.target.files.length > 0) {
-<<<<<<< HEAD
-                                                handleSendFileOnlyAdmin(Array.from(e.target.files));
-                                            }
-                                            e.target.value = '';
-=======
                                                 setPublicFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                                             }
                                             e.target.value = "";
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                                         }}
                                     />
                                 </label>

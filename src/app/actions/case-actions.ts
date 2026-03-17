@@ -304,11 +304,7 @@ export async function addPublicCaseUpdate(
 
         const finalNote = note.trim() || (attachments && attachments.length > 0 ? "ส่งไฟล์แนบ/รูปภาพเพิ่มเติม" : "");
 
-<<<<<<< HEAD
         const update = await prisma.caseUpdate.create({
-=======
-        await prisma.caseUpdate.create({
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             data: {
                 caseId: caseData.id,
                 actionType: ActionType.COMMENT,

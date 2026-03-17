@@ -155,24 +155,12 @@ export async function appendToSheet(rowData: unknown[]) {
         // แปลงค่าวันที่เป็นสตริงเวลาไทย และบังคับให้เป็น "ข้อความ" ในชีต (ใส่ ' นำหน้า)
         const formattedData = rowData.map((val, idx) => {
             if (val instanceof Date) {
-<<<<<<< HEAD
-                // Return DD/MM/YYYY HH:mm:ss format 
-                const pad = (n: number) => n.toString().padStart(2, '0');
-                const d = val.getUTCDate();
-                const m = val.getUTCMonth() + 1;
-                const y = val.getUTCFullYear();
-                const hh = pad(val.getUTCHours());
-                const mm = pad(val.getUTCMinutes());
-                const ss = pad(val.getUTCSeconds());
-                return `${pad(d)}/${pad(m)}/${y} ${hh}:${mm}:${ss}`;
-=======
                 const formatted = formatBangkokDateTime(val);
                 // ถ้าเป็นคอลัมน์วันที่/เวลา ให้ใส่ ' นำหน้าเพื่อไม่ให้กลายเป็นตัวเลข 46094.x
                 if (idx === SHEET_COLUMNS.DATE) {
                     return `'${formatted}`;
                 }
                 return formatted;
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             }
             if (val === null || val === undefined) {
                 return "";
@@ -461,22 +449,11 @@ export async function appendAttachmentToSheet(rowData: unknown[]) {
         // สำหรับชีต Attachments ให้ใช้เวลาไทยปัจจุบันเท่านั้น
         const formattedData = rowData.map((val, idx) => {
             if (val instanceof Date) {
-<<<<<<< HEAD
-                const pad = (n: number) => n.toString().padStart(2, '0');
-                const d = val.getUTCDate();
-                const m = val.getUTCMonth() + 1;
-                const y = val.getUTCFullYear();
-                const hh = pad(val.getUTCHours());
-                const mm = pad(val.getUTCMinutes());
-                const ss = pad(val.getUTCSeconds());
-                return `${pad(d)}/${pad(m)}/${y} ${hh}:${mm}:${ss}`;
-=======
                 const formatted = formatBangkokDateTime(val);
                 if (idx === 0) {
                     return `'${formatted}`;
                 }
                 return formatted;
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
             }
             if (val === null || val === undefined) return "";
             return String(val);

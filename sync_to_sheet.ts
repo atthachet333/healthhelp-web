@@ -86,21 +86,13 @@ async function main() {
         console.error("Cannot read main sheet name.");
         return;
     }
-<<<<<<< HEAD
-    console.log(`✅ Writing to sheet: "${firstSheet}"`);
-=======
     console.log(`✅ Writing to sheet: "${mainSheetName}"`);
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
 
     // --- Write header row (always overwrite row 1 to keep it correct) ---
     console.log("Writing header row (A1:P1)...");
     await sheets.spreadsheets.values.update({
         spreadsheetId,
-<<<<<<< HEAD
-        range: `'${firstSheet}'!A1:P1`,
-=======
         range: `'${mainSheetName}'!A1:P1`,
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         valueInputOption: "USER_ENTERED",
         requestBody: { values: [SHEET_HEADERS] },
     });
@@ -141,11 +133,7 @@ async function main() {
 
     // Build rows matching SHEET_HEADERS order exactly (A-P = 16 columns)
     const rows = cases.map((c: any) => [
-<<<<<<< HEAD
-        formatDate(new Date(c.created_at)),           // A: วันที่/เวลา
-=======
         `'${formatDate(new Date(c.created_at))}`,     // A: วันที่/เวลา (เก็บเป็นข้อความ ไม่ให้แสดงเป็นตัวเลข 46094.x)
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         c.case_no,                                    // B: เลขที่เคส
         c.tracking_code,                              // C: Tracking Code
         c.full_name,                                  // D: ชื่อผู้แจ้ง

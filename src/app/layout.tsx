@@ -24,9 +24,6 @@ export default function RootLayout({
         />
       </head>
       <body>
-<<<<<<< HEAD
-        <Toaster position="top-right" />
-=======
         <Toaster
           position="top-right"
           toastOptions={{
@@ -48,7 +45,6 @@ export default function RootLayout({
             },
           }}
         />
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
         {children}
       </body>
     </html>

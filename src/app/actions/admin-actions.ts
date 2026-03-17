@@ -1,14 +1,64 @@
 "use server";
 
+import { existsSync } from "fs";
+import { unlink } from "fs/promises";
+import path from "path";
 import { prisma } from "@/lib/prisma";
 import { CaseStatus, ActionType, Priority, Role } from "@prisma/client";
 import { compare } from "bcryptjs";
-<<<<<<< HEAD
-=======
 import { revalidatePath } from "next/cache";
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
-import { updateSheetCaseStatus, updateSheetAssignee, appendAttachmentToSheet } from "@/lib/google-sheets";
+import { updateSheetCaseStatus, updateSheetAssignee, appendAttachmentToSheet, getGoogleSheetsClient } from "@/lib/google-sheets";
 import { getStatusLabel } from "@/lib/utils";
+
+async function deleteAttachmentRowFromSheet(fileUrl: string) {
+    try {
+        const sheets = await getGoogleSheetsClient();
+        const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+        if (!sheets || !spreadsheetId) return;
+
+        const meta = await sheets.spreadsheets.get({ spreadsheetId });
+        const attachmentSheet = meta.data.sheets?.find((sheet) => {
+            const title = sheet.properties?.title?.toLowerCase() ?? "";
+            return title.includes("attachment") || title.includes("ไฟล์") || title.includes("เอกสาร");
+        });
+
+        if (!attachmentSheet?.properties?.title || attachmentSheet.properties.sheetId === undefined) {
+            return;
+        }
+
+        const sheetName = attachmentSheet.properties.title;
+        const sheetId = attachmentSheet.properties.sheetId;
+
+        const res = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `'${sheetName}'!E:E`,
+        });
+
+        const rows = res.data.values ?? [];
+        const rowIndex = rows.findIndex((row) => row[0] === fileUrl);
+        if (rowIndex === -1) return;
+
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+                requests: [
+                    {
+                        deleteDimension: {
+                            range: {
+                                sheetId,
+                                dimension: "ROWS",
+                                startIndex: rowIndex,
+                                endIndex: rowIndex + 1,
+                            },
+                        },
+                    },
+                ],
+            },
+        });
+    } catch (error) {
+        console.warn("[Sheet] ลบแถว Attachments ไม่สำเร็จ:", error);
+    }
+}
 
 // ============ AUTH ============
 export async function loginAction(email: string, password: string) {
@@ -274,11 +324,7 @@ export async function addCaseUpdate(
     note: string, 
     newStatus?: string, 
     isPublic?: boolean,
-<<<<<<< HEAD
-    attachments?: { fileName: string; fileUrl: string; fileKey: string; fileType?: string }[]
-=======
     attachments?: { fileName: string; fileUrl: string; fileKey?: string; fileType?: string }[]
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
 ) {
     try {
         const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -332,10 +378,7 @@ export async function addCaseUpdate(
                     create: attachments.map(att => ({
                         fileName: att.fileName,
                         fileUrl: att.fileUrl,
-<<<<<<< HEAD
                         fileKey: att.fileKey,
-=======
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                         fileType: att.fileType || "application/octet-stream",
                     }))
                 } : undefined,
@@ -350,12 +393,8 @@ export async function addCaseUpdate(
                     caseData.caseNo,
                     caseData.reporter?.phone || "-",
                     att.fileName,
-<<<<<<< HEAD
-                    att.fileUrl 
-=======
                     att.fileUrl,
                     user.fullName, // ผู้ส่ง = เจ้าหน้าที่ที่อัปโหลดไฟล์/แนบไฟล์
->>>>>>> e676da9595a22026898b785d54bf7e7ced02fe69
                 ];
                 appendAttachmentToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
             }
@@ -431,6 +470,59 @@ export async function assignCase(caseId: string, assigneeId: string, currentUser
     } catch (error) {
         console.error("Assign case error:", error);
         return { success: false, error: "เกิดข้อผิดพลาด" };
+    }
+}
+
+export async function deleteAttachment(attachmentId: string, currentUserId: string) {
+    try {
+        const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } });
+        if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.role !== "SUPERVISOR")) {
+            return { success: false, error: "ไม่มีสิทธิ์ในการลบ" };
+        }
+
+        const attachment = await prisma.attachment.findUnique({
+            where: { id: attachmentId },
+            include: {
+                caseUpdate: {
+                    include: {
+                        case: {
+                            select: { id: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!attachment) {
+            return { success: false, error: "ไม่พบไฟล์" };
+        }
+
+        const relativeFilePath = attachment.fileUrl.replace(/^\/+/, "");
+        const filePath = path.join(process.cwd(), "public", relativeFilePath);
+
+        if (existsSync(filePath)) {
+            await unlink(filePath);
+        }
+
+        await deleteAttachmentRowFromSheet(attachment.fileUrl);
+        await prisma.attachment.delete({ where: { id: attachmentId } });
+
+        await prisma.auditLog.create({
+            data: {
+                userId: currentUserId,
+                action: "DELETE_ATTACHMENT",
+                resource: "ATTACHMENT",
+                resourceId: attachmentId,
+                metadata: { fileName: attachment.fileName, fileUrl: attachment.fileUrl },
+            },
+        });
+
+        revalidatePath(`/admin/cases/${attachment.caseUpdate.case.id}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Delete attachment error:", error);
+        return { success: false, error: "เกิดข้อผิดพลาดในการลบไฟล์" };
     }
 }
 
