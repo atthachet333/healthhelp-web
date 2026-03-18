@@ -166,7 +166,11 @@ export async function createCase(input: CreateCaseInput) {
             `[Sheet] sheetData has ${sheetData.length} cols but SHEET_COLUMNS defines ${Object.keys(SHEET_COLUMNS).length}`);
 
         // Use setImmediate or just don't await so the user gets the success response instantly
-        appendToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
+        try {
+            await appendToSheet(sheetData);
+        } catch (sheetError) {
+            console.error("Sheet Sync Error:", sheetError);
+        }
 
         return { success: true, trackingCode, caseNo };
     } catch (error) {
