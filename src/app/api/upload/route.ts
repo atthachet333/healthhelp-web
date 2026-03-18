@@ -1,48 +1,81 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import fs from "fs";
+import { prisma } from "@/lib/prisma";
+import { appendAttachmentToSheet } from "@/lib/google-sheets";
+import { sendLineNotify } from "@/lib/line-notify";
+import { ActionType } from "@prisma/client";
+import { put } from "@vercel/blob"; // ✅ เปลี่ยนมาใช้ Vercel Blob
 
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
-        const files = formData.getAll("files") as File[];
+        const caseNo = formData.get("caseNo") as string;
+        const phone = formData.get("phone") as string;
+        const file = formData.get("file") as File;
 
-        if (!files || files.length === 0) {
-            return NextResponse.json({ success: false, error: "ไม่พบไฟล์" }, { status: 400 });
+        if (!caseNo || !file) {
+            return NextResponse.json({ success: false, error: "ข้อมูลไม่ครบถ้วน" }, { status: 400 });
         }
 
-        const uploadDir = path.join(process.cwd(), "public", "uploads");
-        if (!fs.existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
+        // Verify case existence
+        const caseRecord = await prisma.case.findUnique({
+            where: { caseNo },
+            include: { reporter: true }
+        });
+
+        if (!caseRecord) {
+            return NextResponse.json({ success: false, error: "ไม่พบเคสด้วยหมายเลขนี้" }, { status: 404 });
         }
 
-        const uploadedFiles = [];
+        // Optional phone verification
+        if (phone && caseRecord.reporter.phone !== phone) {
+            return NextResponse.json({ success: false, error: "เบอร์โทรศัพท์ไม่ตรงกับข้อมูลในระบบ" }, { status: 400 });
+        }
 
-        for (const file of files) {
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
+        // ✅ อัปโหลดไฟล์ขึ้น Vercel Blob แทนการเซฟลง public/uploads
+        // เราจะได้ fileUrl เป็นลิงก์จริงที่เข้าถึงได้เลยทันที
+        const blob = await put(`uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`, file, {
+            access: 'public',
+        });
+        const fileUrl = blob.url;
 
-            // Unique filename
-            const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-            // Replace spaces and special chars to prevent URL issues
-            const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-            const filename = `${uniqueSuffix}-${safeName}`;
-            const filePath = path.join(uploadDir, filename);
-
-            await writeFile(filePath, buffer);
-
-            const fileUrl = `/uploads/${filename}`;
-            
-            uploadedFiles.push({
-                fileName: file.name,
+        // Save to Database
+        await prisma.attachment.create({
+            data: {
                 fileUrl,
-                fileKey: filename,
-                fileType: file.type || "application/octet-stream"
-            });
+                fileName: file.name,
+                fileType: file.type,
+                caseUpdate: {
+                    create: {
+                        caseId: caseRecord.id,
+                        actionType: ActionType.COMMENT,
+                        note: "ผู้ใช้งานอัปโหลดไฟล์/หลักฐานเพิ่มเติม",
+                    }
+                }
+            }
+        });
+
+        // Save to Google Sheets (Attachments tab)
+        const sheetData = [
+            new Date(),
+            caseNo,
+            caseRecord.reporter.phone,
+            file.name,
+            fileUrl, 
+            caseRecord.reporter.fullName, 
+        ];
+
+        // ✅ ใส่ try-catch และ await ป้องกัน Vercel ตัดจบการทำงาน
+        try {
+            await appendAttachmentToSheet(sheetData);
+        } catch (sheetError) {
+            console.error("Sheet Sync Error:", sheetError);
         }
 
-        return NextResponse.json({ success: true, files: uploadedFiles });
+        // Notify Admin
+        const lineMsg = `📎 มีไฟล์แนบเพิ่มเติม!\nเคส: ${caseNo}\nพิมพ์โดย: ${caseRecord.reporter.fullName}\nชื่อไฟล์: ${file.name}`;
+        await sendLineNotify(lineMsg);
+
+        return NextResponse.json({ success: true, fileUrl });
     } catch (error) {
         console.error("Upload error:", error);
         return NextResponse.json({ success: false, error: "เกิดข้อผิดพลาดในการอัปโหลดไฟล์" }, { status: 500 });
