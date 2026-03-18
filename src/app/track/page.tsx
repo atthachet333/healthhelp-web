@@ -98,23 +98,34 @@ export default function TrackPage() {
     async function handleUserReply() {
         if (!caseData || (!userReply.trim() && userFiles.length === 0)) return;
         setSubmittingReply(true);
-
+    
         let uploadedAttachments: any[] = [];
-
-        // ถ้ามีไฟล์ ให้ upload ก่อน แล้วค่อยสร้างข้อความเดียวที่มีทั้งข้อความและไฟล์ (เหมือนแชท)
+    
         if (userFiles.length > 0) {
             setUploadingUserFiles(true);
             try {
-                const formData = new FormData();
-                userFiles.forEach((f) => formData.append("files", f));
-                const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-                if (!uploadRes.ok) throw new Error("upload failed");
-                const uploadData = await uploadRes.json();
-                uploadedAttachments = (uploadData.files || []).map((f: any) => ({
-                    ...f,
-                    fileSize: f.fileSize || 0,
-                }));
-            } catch {
+                // ✅ เปลี่ยนการวนลูปส่งไฟล์ให้ตรงกับ API (route.ts)
+                for (const f of userFiles) {
+                    const formData = new FormData();
+                    formData.append("file", f); // ต้องเป็น "file" ไม่มี s
+                    formData.append("caseNo", caseData.caseNo); // ต้องส่งเลขเคส
+                    formData.append("phone", caseData.reporter.phone); // ต้องส่งเบอร์โทร
+    
+                    const uploadRes = await fetch("/api/upload-file", { 
+                        method: "POST", 
+                        body: formData 
+                    });
+    
+                    if (!uploadRes.ok) throw new Error("upload failed");
+                    const uploadData = await uploadRes.json();
+                    
+                    uploadedAttachments.push({
+                        fileUrl: uploadData.fileUrl,
+                        fileName: f.name,
+                        fileType: f.type
+                    });
+                }
+            } catch (err) {
                 setError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
                 setSubmittingReply(false);
                 setUploadingUserFiles(false);
@@ -122,6 +133,7 @@ export default function TrackPage() {
             }
             setUploadingUserFiles(false);
         }
+        // ... ส่วนที่เหลือคงเดิม ...
 
         const res = await addPublicCaseUpdate(caseData.trackingCode, userReply, uploadedAttachments);
         if (res.success) {
@@ -140,22 +152,27 @@ export default function TrackPage() {
         if (!caseData || files.length === 0) return;
         setUploadingUserFiles(true);
         try {
-            const formData = new FormData();
-            files.forEach(f => formData.append("files", f));
-            const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-            if (!uploadRes.ok) throw new Error("upload failed");
-            const uploadData = await uploadRes.json();
-            const uploadedAttachments = (uploadData.files || []).map((f: any) => ({ ...f, fileSize: f.fileSize || 0 }));
+            const uploadedAttachments: any[] = [];
+            for (const f of files) {
+                const formData = new FormData();
+                formData.append("file", f);
+                formData.append("caseNo", caseData.caseNo);
+                formData.append("phone", caseData.reporter.phone);
+    
+                const uploadRes = await fetch("/api/upload-file", { method: "POST", body: formData });
+                if (!uploadRes.ok) throw new Error("upload failed");
+                const uploadData = await uploadRes.json();
+                uploadedAttachments.push({ fileUrl: uploadData.fileUrl, fileName: f.name, fileType: f.type });
+            }
+    
             const res = await addPublicCaseUpdate(caseData.trackingCode, "", uploadedAttachments);
             if (res.success) {
                 setUserFiles([]);
                 const data = await getCaseByTracking(caseData.trackingCode);
                 if (data) setCaseData(data);
-            } else {
-                setError(res.error || "เกิดข้อผิดพลาด");
             }
         } catch (err) {
-            setError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
+            setError("อัปโหลดไฟล์ไม่สำเร็จ");
         }
         setUploadingUserFiles(false);
     }
