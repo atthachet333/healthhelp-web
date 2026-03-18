@@ -3,9 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { appendAttachmentToSheet } from "@/lib/google-sheets";
 import { sendLineNotify } from "@/lib/line-notify";
 import { ActionType } from "@prisma/client";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import fs from "fs";
+import { put } from "@vercel/blob"; // ✅ เปลี่ยนมาใช้ Vercel Blob
 
 export async function POST(request: Request) {
     try {
@@ -33,24 +31,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: "เบอร์โทรศัพท์ไม่ตรงกับข้อมูลในระบบ" }, { status: 400 });
         }
 
-        // Local File Storage Setup
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        const uploadDir = path.join(process.cwd(), "public", "uploads");
-        if (!fs.existsSync(uploadDir)) {
-            await mkdir(uploadDir, { recursive: true });
-        }
-
-        // Unique filename
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const filename = `${uniqueSuffix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-        const filePath = path.join(uploadDir, filename);
-
-        await writeFile(filePath, buffer);
-
-        // URL for the file to be accessed publicly
-        const fileUrl = `/uploads/${filename}`;
+        // ✅ อัปโหลดไฟล์ขึ้น Vercel Blob (ไม่ต้องใช้ fs/mkdir แล้ว)
+        const blob = await put(`uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`, file, {
+            access: 'public',
+        });
+        const fileUrl = blob.url;
 
         // Save to Database
         await prisma.attachment.create({
@@ -74,11 +59,16 @@ export async function POST(request: Request) {
             caseNo,
             caseRecord.reporter.phone,
             file.name,
-            fileUrl, // In a real production app with a domain, this should be the full absolute URL e.g., https://yourdomain.com/uploads/...
-            caseRecord.reporter.fullName, // ผู้ส่ง (ผู้ใช้งานที่อัปโหลดไฟล์)
+            fileUrl, 
+            caseRecord.reporter.fullName, 
         ];
 
-        appendAttachmentToSheet(sheetData).catch(e => console.error(e));
+        // ✅ ใช้ await และ try-catch เพื่อให้ Vercel ทำงานจนเสร็จก่อน return
+        try {
+            await appendAttachmentToSheet(sheetData);
+        } catch (sheetError) {
+            console.error("Sheet Sync Error:", sheetError);
+        }
 
         // Notify Admin
         const lineMsg = `📎 มีไฟล์แนบเพิ่มเติม!\nเคส: ${caseNo}\nพิมพ์โดย: ${caseRecord.reporter.fullName}\nชื่อไฟล์: ${file.name}`;
