@@ -171,23 +171,40 @@ export function CaseDetailClient({
         let uploadedAttachments: any[] = [];
 
         // ถ้ามีไฟล์ให้ upload ก่อน แล้วสร้างข้อความเดียวที่มีทั้งข้อความและไฟล์ (เหมือนแชท)
+        // 🚩 ส่วนที่แก้ไข: วนลูปส่งไฟล์ทีละไฟล์เพื่อให้ตรงกับ API route.ts
         if (publicFiles.length > 0) {
             setUploadingFiles(true);
             try {
-                const formData = new FormData();
-                publicFiles.forEach((file) => formData.append("files", file));
-                const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-                if (!uploadRes.ok) throw new Error("Upload failed");
-                const uploadData = await uploadRes.json();
-                uploadedAttachments = (uploadData.files || []).map((f: any) => ({
-                    ...f,
-                    fileSize: f.fileSize || 0,
-                }));
-            } catch (error) {
-                console.error("File upload error:", error);
-                toast.error("อัปโหลดไฟล์ไม่สำเร็จ");
-                setSubmittingPublic(false);
+                for (const file of publicFiles) {
+                    const formData = new FormData();
+                    formData.append("file", file); // 👈 แก้จาก "files" เป็น "file"
+                    formData.append("caseNo", caseData.caseNo); // 👈 ส่งเลขเคสไปด้วย
+                    formData.append("phone", caseData.reporter.phone); // 👈 ส่งเบอร์โทรไปด้วย
+
+                    const uploadRes = await fetch("/api/upload", {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    if (!uploadRes.ok) {
+                        const errorData = await uploadRes.json();
+                        throw new Error(errorData.error || "Upload failed");
+                    }
+
+                    const uploadData = await uploadRes.json();
+                    
+                    // เก็บข้อมูลไฟล์ที่อัปโหลดสำเร็จเข้า Array
+                    uploadedAttachments.push({
+                        fileUrl: uploadData.fileUrl,
+                        fileName: file.name,
+                        fileType: file.type
+                    });
+                }
+            } catch (err: any) {
+                console.error("Upload error:", err);
+                toast.error("อัปโหลดไฟล์ไม่สำเร็จ: " + err.message);
                 setUploadingFiles(false);
+                setSubmittingPublic(false);
                 return;
             }
             setUploadingFiles(false);

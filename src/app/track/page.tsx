@@ -106,24 +106,20 @@ export default function TrackPage() {
             try {
                 // ✅ เปลี่ยนการวนลูปส่งไฟล์ให้ตรงกับ API (route.ts)
                 for (const f of userFiles) {
-                    const formData = new FormData();
-                    formData.append("file", f); // ต้องเป็น "file" ไม่มี s
-                    formData.append("caseNo", caseData.caseNo); // ต้องส่งเลขเคส
-                    formData.append("phone", caseData.reporter.phone); // ต้องส่งเบอร์โทร
-    
-                    const uploadRes = await fetch("/api/upload-file", { 
-                        method: "POST", 
-                        body: formData 
+                   console.log("เช็คข้อมูลก่อนส่ง:", {
+                        caseNo: caseData?.caseNo,
+                        phone: caseData?.reporter?.phone,
+                        filesCount: userFiles.length,
                     });
-    
+
+                    const formData = new FormData();
+                    formData.append("file", f);
+                    formData.append("caseNo", caseData.caseNo);
+                    formData.append("phone", caseData.reporter.phone);
+                    const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
                     if (!uploadRes.ok) throw new Error("upload failed");
                     const uploadData = await uploadRes.json();
-                    
-                    uploadedAttachments.push({
-                        fileUrl: uploadData.fileUrl,
-                        fileName: f.name,
-                        fileType: f.type
-                    });
+                    uploadedAttachments.push({ fileUrl: uploadData.fileUrl, fileName: f.name, fileType: f.type });
                 }
             } catch (err) {
                 setError("อัปโหลดไฟล์ไม่สำเร็จ กรุณาลองใหม่");
@@ -159,7 +155,7 @@ export default function TrackPage() {
                 formData.append("caseNo", caseData.caseNo);
                 formData.append("phone", caseData.reporter.phone);
     
-                const uploadRes = await fetch("/api/upload-file", { method: "POST", body: formData });
+                const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
                 if (!uploadRes.ok) throw new Error("upload failed");
                 const uploadData = await uploadRes.json();
                 uploadedAttachments.push({ fileUrl: uploadData.fileUrl, fileName: f.name, fileType: f.type });

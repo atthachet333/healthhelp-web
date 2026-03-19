@@ -12,6 +12,12 @@ export async function POST(request: Request) {
         const phone = formData.get("phone") as string;
         const file = formData.get("file") as File;
 
+        console.log("--- DEBUG START ---");
+        console.log("caseNo ที่ส่งมา:", caseNo);
+        console.log("phone ที่ส่งมา:", phone);
+        console.log("ไฟล์ที่ส่งมา:", file ? { name: file.name, size: file.size, type: file.type } : "ไม่มีไฟล์");
+        console.log("--- DEBUG END ---");
+
         if (!caseNo || !file) {
             return NextResponse.json({ success: false, error: "ข้อมูลไม่ครบถ้วน" }, { status: 400 });
         }
