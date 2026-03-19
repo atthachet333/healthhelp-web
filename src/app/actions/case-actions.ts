@@ -297,7 +297,7 @@ export async function getCategories() {
 export async function addPublicCaseUpdate(
     trackingCode: string,
     note: string,
-    attachments?: { fileName: string; fileUrl: string; fileType: string; fileSize: number }[]
+    attachments?: { fileName: string; fileUrl: string; fileType: string; fileSize?: number }[]
 ) {
     try {
         const caseData = await prisma.case.findUnique({
@@ -308,48 +308,54 @@ export async function addPublicCaseUpdate(
 
         const finalNote = note.trim() || (attachments && attachments.length > 0 ? "ส่งไฟล์แนบ/รูปภาพเพิ่มเติม" : "");
 
+        // 🛠 แก้ไขจุดที่ 1: กรองข้อมูลไฟล์ให้ปลอดภัยก่อนบันทึก
+        const attachmentsData = attachments?.map((a) => ({
+            fileName: a.fileName,
+            fileUrl: a.fileUrl,
+            fileType: a.fileType,
+            fileSize: a.fileSize || 0, // ถ้าไม่มีขนาดไฟล์ ให้ใส่ 0 ป้องกัน Database Error
+        })) || [];
+
         const update = await prisma.caseUpdate.create({
             data: {
                 caseId: caseData.id,
                 actionType: ActionType.COMMENT,
                 note: finalNote,
-                ...(attachments && attachments.length > 0
+                ...(attachmentsData.length > 0
                     ? {
                         attachments: {
-                            create: attachments.map((a) => ({
-                                fileName: a.fileName,
-                                fileUrl: a.fileUrl,
-                                fileType: a.fileType,
-                                fileSize: a.fileSize,
-                            })),
+                            create: attachmentsData,
                         },
                     }
                     : {}),
             },
         });
 
-        // ถ้ามีไฟล์แนบจากผู้ใช้งาน ให้ sync ไปยัง Google Sheets แท็บ Attachments ด้วย (เหมือนฝั่งแอดมิน)
-        if (attachments && attachments.length > 0) {
-            for (const att of attachments) {
+        // 🛠 แก้ไขจุดที่ 2: ใช้ await เพื่อให้ Google Sheets บันทึกสำเร็จก่อนปิดฟังก์ชัน
+        if (attachmentsData.length > 0) {
+            for (const att of attachmentsData) {
                 const sheetData = [
                     new Date(),
                     caseData.caseNo,
                     caseData.reporter.phone,
                     att.fileName,
                     att.fileUrl,
-                    caseData.reporter.fullName, // ผู้ส่ง = ผู้แจ้งเคส
+                    caseData.reporter.fullName, 
                 ];
-                appendAttachmentToSheet(sheetData).catch(e => console.error("Sheet Sync Error:", e));
+                try {
+                    await appendAttachmentToSheet(sheetData); // ใส่ await ตรงนี้
+                } catch (e) {
+                    console.error("❌ Google Sheet Sync Error:", e);
+                }
             }
         }
 
-        // Notify admins if user replies
-        const lineMsg = `💬 ผู้แจ้งตอบกลับเคส!\nเลขที่: ${caseData.caseNo}\nข้อความ: ${finalNote}${attachments && attachments.length > 0 ? `\n📎 แนบไฟล์ ${attachments.length} ไฟล์` : ""}\nตรวจสอบได้ที่ระบบ HealthHelp`;
+        const lineMsg = `💬 ผู้แจ้งตอบกลับเคส!\nเลขที่: ${caseData.caseNo}\nข้อความ: ${finalNote}${attachmentsData.length > 0 ? `\n📎 แนบไฟล์ ${attachmentsData.length} ไฟล์` : ""}\nตรวจสอบได้ที่ระบบ HealthHelp`;
         await sendLineNotify(lineMsg);
 
         return { success: true };
     } catch (error) {
-        console.error("Error adding public update:", error);
-        return { success: false, error: "เกิดข้อผิดพลาด" };
+        console.error("❌ Error adding public update:", error);
+        return { success: false, error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" };
     }
 }
