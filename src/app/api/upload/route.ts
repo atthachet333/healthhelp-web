@@ -45,45 +45,30 @@ export async function POST(request: Request) {
         const fileUrl = blob.url;
 
         // Save to Database
-        await prisma.attachment.create({
-            data: {
-                fileUrl,
-                fileName: file.name,
-                fileType: file.type,
-                caseUpdate: {
-                    create: {
-                        caseId: caseRecord.id,
-                        actionType: ActionType.COMMENT,
-                        note: "ผู้ใช้งานอัปโหลดไฟล์/หลักฐานเพิ่มเติม",
-                    }
+        export async function POST(request: Request) {
+            try {
+                const formData = await request.formData();
+                const file = formData.get("file") as File;
+        
+                if (!file) {
+                    return NextResponse.json({ success: false, error: "ไม่มีไฟล์" }, { status: 400 });
                 }
+        
+                // 1. อัปโหลดขึ้น Vercel Blob อย่างเดียว
+                const blob = await put(`uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`, file, {
+                    access: 'public',
+                });
+        
+                // 2. ส่งค่ากลับไปให้หน้าบ้าน (ห้ามเซฟลง DB หรือ Sheet ในนี้)
+                return NextResponse.json({ 
+                    success: true, 
+                    fileUrl: blob.url,
+                    fileName: file.name,
+                    fileType: file.type
+                });
+                
+            } catch (error) {
+                console.error("Upload error:", error);
+                return NextResponse.json({ success: false, error: "Upload failed" }, { status: 500 });
             }
-        });
-
-        // Save to Google Sheets (Attachments tab)
-        const sheetData = [
-            new Date(),
-            caseNo,
-            caseRecord.reporter.phone,
-            file.name,
-            fileUrl, 
-            caseRecord.reporter.fullName, 
-        ];
-
-        // ✅ ใส่ try-catch และ await ป้องกัน Vercel ตัดจบการทำงาน
-        try {
-            await appendAttachmentToSheet(sheetData);
-        } catch (sheetError) {
-            console.error("Sheet Sync Error:", sheetError);
         }
-
-        // Notify Admin
-        const lineMsg = `📎 มีไฟล์แนบเพิ่มเติม!\nเคส: ${caseNo}\nพิมพ์โดย: ${caseRecord.reporter.fullName}\nชื่อไฟล์: ${file.name}`;
-        await sendLineNotify(lineMsg);
-
-        return NextResponse.json({ success: true, fileUrl });
-    } catch (error) {
-        console.error("Upload error:", error);
-        return NextResponse.json({ success: false, error: "เกิดข้อผิดพลาดในการอัปโหลดไฟล์" }, { status: 500 });
-    }
-}
