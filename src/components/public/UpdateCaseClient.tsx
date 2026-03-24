@@ -18,18 +18,43 @@ export function UpdateCaseClient() {
         setResult(null);
 
         try {
-            const formData = new FormData();
-            formData.append("caseNo", caseNo);
-            formData.append("phone", phone);
-            formData.append("file", file);
+            // ==========================================
+            // จังหวะที่ 1: โยนไฟล์ไปเก็บที่ MinIO ก่อน
+            // ==========================================
+            const fileFormData = new FormData();
+            fileFormData.append("file", file);
 
-            // In Next.js App Router, we can either post to an API route or use a Server Action.
-            // A server action is already suitable but Server Actions handling FormData with large files can be tricky.
-            // Let's assume we have an API route or we'll make a specialized Server Action.
-            // Since we must mock/save to google sheet, we'll hit our api:
+            // ยิงไปที่ API สำหรับอัปโหลดที่เราสร้างไว้ตอนเทส
+            const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: fileFormData
+            });
+
+            const uploadData = await uploadRes.json();
+            let savedFileName = "";
+
+            if (uploadData.success) {
+                // ได้ชื่อไฟล์กลับมาแล้ว (เช่น "uploads/123-file.jpg")
+                savedFileName = uploadData.fileName;
+            } else {
+                setResult({ success: false, error: "อัปโหลดไฟล์ไป MinIO ไม่สำเร็จ: " + uploadData.error });
+                setLoading(false);
+                return; // หยุดการทำงานถ้าอัปโหลดรูปพัง
+            }
+
+            // ==========================================
+            // จังหวะที่ 2: เอาข้อมูลเคส + ชื่อไฟล์ที่ได้ ส่งไปเซฟลงระบบเดิม
+            // ==========================================
+            const caseFormData = new FormData();
+            caseFormData.append("caseNo", caseNo);
+            caseFormData.append("phone", phone);
+            // เปลี่ยนจากการแนบไฟล์ก้อนใหญ่ๆ เป็นการแนบแค่ "ชื่อไฟล์" (String) ไปแทน
+            caseFormData.append("fileName", savedFileName);
+
+            // ยิงไปที่ API เดิมของคุณที่ใช้เซฟลง Database หรือ Google Sheet
             const response = await fetch("/api/upload-file", {
                 method: "POST",
-                body: formData
+                body: caseFormData
             });
 
             const data = await response.json();
@@ -38,10 +63,14 @@ export function UpdateCaseClient() {
                 setFile(null);
                 setCaseNo("");
                 setPhone("");
+                // รีเซ็ตค่าช่องเลือกไฟล์หน้าเว็บ
+                const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                if (fileInput) fileInput.value = '';
             } else {
                 setResult({ success: false, error: data.error || "เกิดข้อผิดพลาด" });
             }
-        } catch {
+        } catch (error) {
+            console.error("Submit Error:", error);
             setResult({ success: false, error: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" });
         } finally {
             setLoading(false);

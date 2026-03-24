@@ -6,6 +6,12 @@ export default async function CaseDetailPage(props: {
     params: Promise<{ id: string }>;
 }) {
     const params = await props.params;
+
+    // ตรวจสอบ ID ก่อนส่งไปหาฐานข้อมูล ป้องกัน Prisma Error
+    if (!params.id || params.id === "cases") {
+        notFound();
+    }
+
     const [caseData, staffUsers] = await Promise.all([
         getCaseById(params.id),
         getStaffUsers(),
