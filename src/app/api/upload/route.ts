@@ -1,74 +1,45 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { appendAttachmentToSheet } from "@/lib/google-sheets";
-import { sendLineNotify } from "@/lib/line-notify";
-import { ActionType } from "@prisma/client";
-import { put } from "@vercel/blob"; // ✅ เปลี่ยนมาใช้ Vercel Blob
+import { NextRequest, NextResponse } from 'next/server';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
     try {
-        const formData = await request.formData();
-        const caseNo = formData.get("caseNo") as string;
-        const phone = formData.get("phone") as string;
-        const file = formData.get("file") as File;
+        const formData = await req.formData();
+        const file = formData.get('file') as File;
 
-        console.log("--- DEBUG START ---");
-        console.log("caseNo ที่ส่งมา:", caseNo);
-        console.log("phone ที่ส่งมา:", phone);
-        console.log("ไฟล์ที่ส่งมา:", file ? { name: file.name, size: file.size, type: file.type } : "ไม่มีไฟล์");
-        console.log("--- DEBUG END ---");
-
-        if (!caseNo || !file) {
-            return NextResponse.json({ success: false, error: "ข้อมูลไม่ครบถ้วน" }, { status: 400 });
+        if (!file) {
+            return NextResponse.json({ error: 'No file received.' }, { status: 400 });
         }
 
-        // Verify case existence
-        const caseRecord = await prisma.case.findUnique({
-            where: { caseNo },
-            include: { reporter: true }
-        });
+        // แปลงไฟล์เป็น Buffer เพื่อเตรียมบันทึกลงเครื่อง
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
 
-        if (!caseRecord) {
-            return NextResponse.json({ success: false, error: "ไม่พบเคสด้วยหมายเลขนี้" }, { status: 404 });
+        // ตั้งชื่อไฟล์ใหม่ ป้องกันชื่อซ้ำและตัดอักขระพิเศษออก
+        const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        // กำหนดปลายทางที่จะเซฟไฟล์ (โฟลเดอร์ public/uploads)
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+
+        // เช็คว่ามีโฟลเดอร์ uploads หรือยัง ถ้ายังไม่มีให้สร้างขึ้นมาใหม่เลย
+        try {
+            await fs.access(uploadDir);
+        } catch {
+            await fs.mkdir(uploadDir, { recursive: true });
         }
 
-        // Optional phone verification
-        if (phone && caseRecord.reporter.phone !== phone) {
-            return NextResponse.json({ success: false, error: "เบอร์โทรศัพท์ไม่ตรงกับข้อมูลในระบบ" }, { status: 400 });
-        }
+        // นำไฟล์ไปวางในโฟลเดอร์
+        const filePath = path.join(uploadDir, fileName);
+        await fs.writeFile(filePath, buffer);
 
-        // ✅ อัปโหลดไฟล์ขึ้น Vercel Blob แทนการเซฟลง public/uploads
-        // เราจะได้ fileUrl เป็นลิงก์จริงที่เข้าถึงได้เลยทันที
-        const blob = await put(`uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`, file, {
-            access: 'public',
-        });
-        const fileUrl = blob.url;
+        // สร้าง URL สำหรับให้ Frontend เอาไปใช้งานต่อ
+        // สร้าง URL สำหรับให้ Frontend เอาไปใช้งานต่อ
+        const fileUrl = `/uploads/${fileName}`;
 
-        // Save to Database
-        export async function POST(request: Request) {
-            try {
-                const formData = await request.formData();
-                const file = formData.get("file") as File;
-        
-                if (!file) {
-                    return NextResponse.json({ success: false, error: "ไม่มีไฟล์" }, { status: 400 });
-                }
-        
-                // 1. อัปโหลดขึ้น Vercel Blob อย่างเดียว
-                const blob = await put(`uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`, file, {
-                    access: 'public',
-                });
-        
-                // 2. ส่งค่ากลับไปให้หน้าบ้าน (ห้ามเซฟลง DB หรือ Sheet ในนี้)
-                return NextResponse.json({ 
-                    success: true, 
-                    fileUrl: blob.url,
-                    fileName: file.name,
-                    fileType: file.type
-                });
-                
-            } catch (error) {
-                console.error("Upload error:", error);
-                return NextResponse.json({ success: false, error: "Upload failed" }, { status: 500 });
-            }
-        }
+        return NextResponse.json({ success: true, fileUrl: fileUrl });
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    }
+}

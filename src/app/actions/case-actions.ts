@@ -288,10 +288,15 @@ export async function submitCSAT(trackingCode: string, input: CSATInput) {
 }
 
 export async function getCategories() {
-    return prisma.category.findMany({
-        where: { active: true },
-        orderBy: { name: "asc" },
-    });
+    try {
+        return await prisma.category.findMany({
+            where: { active: true },
+            orderBy: { name: "asc" },
+        });
+    } catch (error) {
+        console.warn("[getCategories] Database connection failed. Returning fallback empty array:", error instanceof Error ? error.message : String(error));
+        return [];
+    }
 }
 
 export async function addPublicCaseUpdate(
