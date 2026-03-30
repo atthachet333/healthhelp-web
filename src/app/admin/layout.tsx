@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
     FileText,
@@ -12,6 +12,8 @@ import {
     Users,
     PlusCircle,
     Database,
+    Clock,
+    CheckCircle2,
 } from "lucide-react";
 
 interface UserSession {
@@ -24,6 +26,7 @@ interface UserSession {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [user, setUser] = useState<UserSession | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -92,98 +95,145 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Sidebar */}
             <aside
-                className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0d1526] border-r border-[#1a2540] flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+                className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-80 bg-[#0d1526] border-r border-[#1a2540] flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
                     }`}
             >
                 {/* Logo */}
-                <div className="px-5 py-7 border-b border-[#1a2540]">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <span className="text-white font-bold text-base">IT</span>
+                <div className="px-6 py-8 border-b border-[#1a2540]">
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <span className="text-white font-bold text-2xl">IT</span>
                         </div>
                         <div>
-                            <h1 className="text-base font-bold text-white leading-tight">Hospital IT</h1>
-                            <p className="text-xs text-slate-400 font-medium">helpdesk</p>
+                            <h1 className="text-2xl font-bold text-white leading-tight">Hospital IT</h1>
+                            <p className="text-base text-slate-400 font-medium mt-0.5">helpdesk</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-4 py-6">
-                    <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider mb-4 px-4">เมนูหลัก</p>
-                    <div className="space-y-2">
+                <nav className="flex-1 px-5 py-7">
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-widest mb-5 px-2">เมนูหลัก</p>
+                    <div className="space-y-1">
                         {filteredNavItems.map((item) => {
                             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                            const isCasesItem = item.href === "/admin/cases";
+                            const currentStatus = searchParams.get("status");
                             return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    target={item.target}
-                                    onClick={() => setSidebarOpen(false)}
-                                    className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-medium ${isActive
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
-                                        : "text-slate-400 hover:text-slate-200 hover:bg-[#1a2540]"
+                                <div key={item.href}>
+                                    <Link
+                                        href={item.href}
+                                        target={item.target}
+                                        onClick={() => setSidebarOpen(false)}
+                                        className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-semibold text-xl ${
+                                            isActive
+                                                ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                                                : "text-slate-300 hover:text-white hover:bg-[#1a2540]"
                                         }`}
-                                >
-                                    <item.icon className="w-[22px] h-[22px]" />
-                                    <span className="text-base">{item.label}</span>
-                                </Link>
+                                    >
+                                        <item.icon className="w-7 h-7 shrink-0" />
+                                        <span>{item.label}</span>
+                                    </Link>
+
+                                    {/* Sub-nav: only show under เคสทั้งหมด when on cases pages */}
+                                    {isCasesItem && isActive && (
+                                        <div className="ml-5 mt-1.5 space-y-1 border-l-2 border-[#1e2d4a] pl-4">
+                                            <Link
+                                                href="/admin/cases?status=HIDE_DONE"
+                                                onClick={() => setSidebarOpen(false)}
+                                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-lg font-semibold ${
+                                                    currentStatus !== "SHOW_DONE"
+                                                        ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
+                                                        : "text-slate-400 hover:text-white hover:bg-[#1a2540]"
+                                                }`}
+                                            >
+                                                <Clock className="w-6 h-6 shrink-0" />
+                                                กำลังดำเนินการ
+                                            </Link>
+                                            <Link
+                                                href="/admin/cases?status=SHOW_DONE"
+                                                onClick={() => setSidebarOpen(false)}
+                                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-lg font-semibold ${
+                                                    currentStatus === "SHOW_DONE"
+                                                        ? "bg-green-600/20 text-green-300 border border-green-500/30"
+                                                        : "text-slate-400 hover:text-white hover:bg-[#1a2540]"
+                                                }`}
+                                            >
+                                                <CheckCircle2 className="w-6 h-6 shrink-0" />
+                                                เคสเสร็จสิ้น
+                                            </Link>
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
                     </div>
                 </nav>
 
                 {/* User info + Logout */}
-                <div className="px-4 pb-6 border-t border-[#1a2540] pt-6">
-                    <div className="flex items-center gap-3 px-4 mb-5">
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                            <span className="text-base font-bold text-white">{user.fullName.charAt(0)}</span>
+                <div className="px-5 pb-7 border-t border-[#1a2540] pt-6">
+                    <div className="flex items-center gap-4 px-3 mb-5">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                            <span className="text-2xl font-bold text-white">{user.fullName.charAt(0)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-200 truncate">{user.fullName}</p>
-                            <p className="text-xs text-slate-400 truncate">{roleLabel[user.role] || user.role}</p>
+                            <p className="text-lg font-bold text-slate-200 truncate">{user.fullName}</p>
+                            <p className="text-base text-slate-400 truncate mt-0.5">{roleLabel[user.role] || user.role}</p>
                         </div>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-base font-semibold"
+                        className="w-full flex items-center justify-center gap-3 px-4 py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-lg font-bold"
                     >
-                        <LogOut className="w-5 h-5" />
+                        <LogOut className="w-6 h-6" />
                         <span>ออกจากระบบ</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-h-screen">
+            <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
                 {/* Top Header Bar */}
-                <header className="sticky top-0 z-30 bg-[#0d1526]/95 backdrop-blur-md border-b border-[#1a2540] px-4 lg:px-8 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <header className="sticky top-0 z-30 bg-[#0d1526]/95 backdrop-blur-md border-b border-[#1a2540] px-6 lg:px-10 py-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="p-2 rounded-lg bg-[#1a2540] text-slate-400 lg:hidden"
+                            className="p-2.5 rounded-xl bg-[#1a2540] text-slate-400 lg:hidden"
                         >
-                            <Menu className="w-5 h-5" />
+                            <Menu className="w-7 h-7" />
                         </button>
-                        <h2 className="text-lg font-bold text-white hidden lg:block">
+                        <h2 className="text-3xl font-extrabold text-white hidden lg:block tracking-tight">
                             {filteredNavItems.find(i => pathname === i.href || pathname.startsWith(i.href + "/"))?.label || "Dashboard"}
                         </h2>
-                        <div className="flex items-center gap-2 lg:hidden">
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
-                                <span className="text-white font-bold text-[10px]">IT</span>
+                        <div className="flex items-center gap-3 lg:hidden">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                                <span className="text-white font-bold text-base">IT</span>
                             </div>
-                            <span className="font-bold text-white text-sm">HealthHelp</span>
+                            <span className="font-bold text-white text-xl">HealthHelp</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center cursor-pointer">
-                            <span className="text-white text-sm font-bold">{user.fullName.charAt(0)}</span>
+                    <div className="flex items-center gap-4">
+                        <div className="hidden lg:flex items-center gap-3 bg-[#1a2540] px-4 py-2.5 rounded-xl border border-[#253354]">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                                <span className="text-white text-lg font-bold">{user.fullName.charAt(0)}</span>
+                            </div>
+                            <div>
+                                <p className="text-base font-bold text-white leading-tight">{user.fullName}</p>
+                                <p className="text-sm text-slate-400">{roleLabel[user.role] || user.role}</p>
+                            </div>
+                        </div>
+                        <div className="lg:hidden w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center cursor-pointer">
+                            <span className="text-white text-lg font-bold">{user.fullName.charAt(0)}</span>
                         </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 lg:p-6 bg-[#0b1121]">{children}</main>
+                <main className="flex-1 bg-[#0b1121] overflow-auto">
+                    <div className="w-full p-6 md:p-8 lg:p-10 min-h-full">
+                        {children}
+                    </div>
+                </main>
             </div>
         </div>
     );

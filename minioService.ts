@@ -1,23 +1,23 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// 1. ตั้งค่าการเชื่อมต่อกับ MinIO
+// 1. ตั้งค่าการเชื่อมต่อกับ MinIO โดยดึงค่าจากไฟล์ .env
 const s3Client = new S3Client({
-    region: "us-east-1",
-    endpoint: "http://localhost:9000",
+    region: "ap-southeast-1", // ใส่เป็น ap-southeast-1 ตามมาตรฐาน S3 (MinIO ไม่ซีเรียส)
+    endpoint: process.env.MINIO_ENDPOINT || "http://127.0.0.1:9000",
     credentials: {
-        accessKeyId: "admin_demo",
-        secretAccessKey: "password123",
+        accessKeyId: process.env.MINIO_ACCESS_KEY || "minioadmin",
+        secretAccessKey: process.env.MINIO_SECRET_KEY || "minioadmin",
     },
     forcePathStyle: true,
 });
 
-const BUCKET_NAME = "healthhelp-file";
+// ดึงชื่อ Bucket จาก .env
+const BUCKET_NAME = process.env.MINIO_BUCKET_NAME || "helpdesk-files";
 
 /**
  * ฟังก์ชันสำหรับอัปโหลดไฟล์ขึ้น MinIO
  */
-// 👇 สังเกตตรงนี้ครับ เราเติม : Buffer และ : string เข้าไป
 export const uploadFileToMinio = async (
     fileBuffer: Buffer,
     fileName: string,
@@ -32,7 +32,7 @@ export const uploadFileToMinio = async (
         });
 
         await s3Client.send(command);
-        console.log(`✅ อัปโหลดไฟล์ ${fileName} สำเร็จ!`);
+        console.log(`✅ อัปโหลดไฟล์ ${fileName} ไปที่ MinIO สำเร็จ!`);
 
         return await getFileUrl(fileName);
     } catch (error) {
@@ -44,7 +44,6 @@ export const uploadFileToMinio = async (
 /**
  * ฟังก์ชันสำหรับสร้างลิงก์ดูไฟล์แบบชั่วคราว (Presigned URL)
  */
-// 👇 เติม : string ให้ fileName
 export const getFileUrl = async (fileName: string): Promise<string> => {
     try {
         const command = new GetObjectCommand({
@@ -52,6 +51,7 @@ export const getFileUrl = async (fileName: string): Promise<string> => {
             Key: fileName,
         });
 
+        // สร้างลิงก์ที่มีอายุ 1 ชั่วโมง (3600 วินาที)
         const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
         return signedUrl;
     } catch (error) {
@@ -60,17 +60,17 @@ export const getFileUrl = async (fileName: string): Promise<string> => {
     }
 };
 
-import { DeleteObjectCommand } from "@aws-sdk/client-s3"; // เพิ่มบรรทัดนี้ไว้ด้านบนสุด
-
-// ฟังก์ชันสำหรับลบไฟล์ออกจาก MinIO
+/**
+ * ฟังก์ชันสำหรับลบไฟล์ออกจาก MinIO
+ */
 export const deleteFileFromMinio = async (fileName: string) => {
     try {
         const command = new DeleteObjectCommand({
-            Bucket: process.env.MINIO_BUCKET_NAME,
-            Key: fileName, // ชื่อไฟล์ เช่น uploads/2026-03-24/xxx.jpg
+            Bucket: BUCKET_NAME,
+            Key: fileName,
         });
         await s3Client.send(command);
-        console.log(`✅ Deleted ${fileName} from MinIO`);
+        console.log(`✅ ลบไฟล์ ${fileName} ออกจาก MinIO สำเร็จ`);
     } catch (error) {
         console.error("❌ MinIO Delete Error:", error);
         throw error;

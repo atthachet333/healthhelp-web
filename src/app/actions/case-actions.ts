@@ -345,7 +345,7 @@ export async function addPublicCaseUpdate(
                     caseData.reporter.phone,
                     att.fileName,
                     att.fileUrl,
-                    caseData.reporter.fullName, 
+                    caseData.reporter.fullName,
                 ];
                 try {
                     await appendAttachmentToSheet(sheetData); // ใส่ await ตรงนี้
@@ -362,5 +362,36 @@ export async function addPublicCaseUpdate(
     } catch (error) {
         console.error("❌ Error adding public update:", error);
         return { success: false, error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล" };
+    }
+}
+
+// ฟังก์ชันสำหรับนับสถิติเคสหน้า Dashboard (เพิ่มใหม่)
+export async function getDashboardStats() {
+    try {
+        // 1. นับเคสทั้งหมดที่มีในระบบ
+        const totalCases = await prisma.case.count();
+
+        // 2. นับเฉพาะเคสที่ยัง "รอดำเนินการ" (สถานะ: เปิดใหม่, กำลังทำ, หรือรอข้อมูล)
+        const activeCases = await prisma.case.count({
+            where: {
+                status: {
+                    in: ['OPEN', 'IN_PROGRESS', 'WAITING_INFO']
+                }
+            }
+        });
+
+        // 3. นับเฉพาะเคสที่ "เสร็จสิ้นแล้ว" (สถานะ: แก้ไขแล้ว หรือ ปิดเคสแล้ว)
+        const closedCases = await prisma.case.count({
+            where: {
+                status: {
+                    in: ['RESOLVED', 'CLOSED']
+                }
+            }
+        });
+
+        return { totalCases, activeCases, closedCases };
+    } catch (error) {
+        console.error("Error fetching stats:", error);
+        return { totalCases: 0, activeCases: 0, closedCases: 0 };
     }
 }

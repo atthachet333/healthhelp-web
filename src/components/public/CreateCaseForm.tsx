@@ -159,20 +159,20 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-10">
+        <form onSubmit={handleSubmit} className="space-y-8 lg:space-y-12">
             {/* Contact Information */}
-            <div className="bg-orange-50/40 p-6 sm:p-8 border border-orange-100 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-4 mb-7 pb-5 border-b border-orange-100/60">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                        <User className="w-5 h-5" />
+            <div className="bg-orange-50/40 p-6 md:p-8 lg:p-10 border border-orange-100 rounded-3xl shadow-sm">
+                <div className="flex items-center gap-4 lg:gap-5 mb-8 lg:mb-10 pb-6 border-b border-orange-100/60">
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                        <User className="w-6 h-6 lg:w-7 lg:h-7" />
                     </div>
                     <div>
-                        <h4 className="text-lg font-bold text-slate-800">ข้อมูลผู้แจ้ง</h4>
-                        <p className="text-sm text-slate-500 mt-0.5">ข้อมูลสำหรับการติดต่อกลับ</p>
+                        <h4 className="text-xl lg:text-2xl font-extrabold text-slate-800">ข้อมูลผู้แจ้ง</h4>
+                        <p className="text-base lg:text-lg text-slate-500 mt-1">ข้อมูลสำหรับการติดต่อกลับ</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8 lg:gap-y-10">
                     {/* Full Name */}
                     <div className="group">
                         <label className="block text-base font-semibold text-slate-700 mb-2.5">
@@ -328,18 +328,18 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
             </div>
 
             {/* Issue Information */}
-            <div className="bg-orange-50/40 p-6 sm:p-8 border border-orange-100 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-4 mb-7 pb-5 border-b border-orange-100/60">
-                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
-                        <FileText className="w-5 h-5" />
+            <div className="bg-orange-50/40 p-6 md:p-8 lg:p-10 border border-orange-100 rounded-3xl shadow-sm">
+                <div className="flex items-center gap-4 lg:gap-5 mb-8 lg:mb-10 pb-6 border-b border-orange-100/60">
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
+                        <FileText className="w-6 h-6 lg:w-7 lg:h-7" />
                     </div>
                     <div>
-                        <h4 className="text-lg font-bold text-slate-800">รายละเอียดปัญหา</h4>
-                        <p className="text-sm text-slate-500 mt-0.5">ข้อมูลของปัญหาที่ต้องการแจ้ง</p>
+                        <h4 className="text-xl lg:text-2xl font-extrabold text-slate-800">รายละเอียดปัญหา</h4>
+                        <p className="text-base lg:text-lg text-slate-500 mt-1">ข้อมูลของปัญหาที่ต้องการแจ้ง</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-7">
+                <div className="grid grid-cols-1 gap-8 lg:gap-10">
                     {/* Category */}
                     <div className="group">
                         <label className="block text-base font-semibold text-slate-700 mb-2.5">
@@ -423,22 +423,22 @@ export function CreateCaseForm({ categories }: { categories: Category[] }) {
             )}
 
             {/* Submit */}
-            <div className="pt-2">
-                <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 sm:py-6 px-6 rounded-2xl shadow-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed">
+            <div className="pt-4 lg:pt-6">
+                <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xl lg:text-2xl py-6 lg:py-8 px-6 rounded-3xl shadow-xl transition-all hover:scale-[1.01] hover:shadow-2xl flex items-center justify-center gap-4 disabled:opacity-70 disabled:cursor-not-allowed">
                     {loading ? (
                         <>
-                            <Loader2 className="w-7 h-7 animate-spin" />
+                            <Loader2 className="w-8 h-8 lg:w-9 lg:h-9 animate-spin" />
                             <span>กำลังส่งข้อมูล...</span>
                         </>
                     ) : (
                         <>
-                            <Send className="w-6 h-6" />
+                            <Send className="w-7 h-7 lg:w-8 lg:h-8" />
                             <span>ส่งแจ้งปัญหา</span>
                         </>
                     )}
                 </button>
-                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500">
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <div className="mt-5 lg:mt-6 flex items-center justify-center gap-3 text-sm lg:text-base font-medium text-slate-500">
+                    <CheckCircle2 className="w-5 h-5 lg:w-6 lg:h-6 text-green-500" />
                     ข้อมูลของคุณถูกส่งผ่านระบบเข้ารหัสอย่างปลอดภัย
                 </div>
             </div>

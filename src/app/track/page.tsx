@@ -216,22 +216,22 @@ export default function TrackPage() {
         <div className="min-h-screen flex flex-col bg-slate-50">
             {/* Header */}
             <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-                <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-4 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-2 group">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                            <HeartPulse className="w-6 h-6 text-white" />
+                <div className="w-full max-w-screen-2xl mx-auto px-6 sm:px-10 py-5 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-3 group">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                            <HeartPulse className="w-8 h-8 text-white" />
                         </div>
-                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 tracking-tight">
+                        <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700 tracking-tight">
                             HealthHelp
                         </span>
                     </Link>
-                    <Link href="/" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block">
+                    <Link href="/" className="text-lg font-semibold text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block">
                         กลับหน้าหลัก
                     </Link>
                 </div>
             </header>
 
-            <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8">
+            <main className="flex-1 w-full px-6 sm:px-10 py-10 flex flex-col items-center">
                 {lightboxSrc && (
                     <ImageLightbox
                         src={lightboxSrc}
@@ -240,58 +240,75 @@ export default function TrackPage() {
                     />
                 )}
 
-                <div className="text-center mb-10">
-                    <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-3">ติดตามสถานะการแจ้งปัญหา</h1>
-                    <p className="text-slate-500 text-lg">ตรวจสอบความคืบหน้า ให้ข้อมูลเพิ่มเติม หรือประเมินผลการให้บริการ</p>
+                <div className="text-center mb-10 w-full max-w-5xl">
+                    <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">ติดตามสถานะการแจ้งปัญหา</h1>
+                    <p className="text-slate-500 text-xl sm:text-2xl">ตรวจสอบความคืบหน้า ให้ข้อมูลเพิ่มเติม หรือประเมินผลการให้บริการ</p>
                 </div>
 
-                <div className="max-w-2xl mx-auto">
+                <div className="w-full max-w-5xl">
                     {/* Search Form */}
-                    <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-6 sm:p-8 border border-slate-100 mb-8">
-                        <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
+                    <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 sm:p-10 border border-slate-100 mb-10">
+                        <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-8">
                             <button
                                 type="button"
                                 onClick={() => { setSearchType("tracking"); setSearchValue(""); setError(""); setCaseData(null); setCasesList([]); }}
-                                className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${searchType === "tracking" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                className={`flex-1 py-4 px-4 rounded-xl text-lg font-bold transition-all duration-200 ${searchType === "tracking" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                             >
                                 ค้นหาด้วยรหัสติดตาม
                             </button>
                             <button
                                 type="button"
                                 onClick={() => { setSearchType("phone"); setSearchValue(""); setError(""); setCaseData(null); setCasesList([]); }}
-                                className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-200 ${searchType === "phone" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                className={`flex-1 py-4 px-4 rounded-xl text-lg font-bold transition-all duration-200 ${searchType === "phone" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                             >
                                 ค้นหาด้วยเบอร์โทร
                             </button>
                         </div>
 
-                        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+                        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-1">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400" />
                                 <input
                                     type="text"
                                     value={searchValue}
                                     onChange={(e) => setSearchValue(e.target.value)}
                                     placeholder={searchType === "tracking" ? "เช่น a1b2c3d4" : "เช่น 0812345678"}
-                                    className="w-full pl-11 pr-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-slate-700 font-medium placeholder:font-normal"
+                                    className="w-full pl-14 pr-4 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-slate-700 text-lg font-medium placeholder:font-normal"
                                 />
                             </div>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all active:scale-95 flex items-center justify-center min-w-[140px] shadow-lg shadow-indigo-600/30 disabled:opacity-70 disabled:active:scale-100"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-5 rounded-2xl text-lg font-bold transition-all active:scale-95 flex items-center justify-center min-w-[160px] shadow-lg shadow-indigo-600/30 disabled:opacity-70 disabled:active:scale-100"
                             >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "ค้นหาเลย"}
+                                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "ค้นหาเลย"}
                             </button>
                         </form>
+                    </div>{/* end search card */}
 
-                        {error && (
-                            <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-2">
-                                <AlertCircle className="w-5 h-5 shrink-0" />
-                                {error}
+                    {/* Quick-info strip */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+                        {[
+                            { icon: "🔍", title: "ค้นหาด้วยรหัส", desc: "ใช้รหัสติดตามที่ได้รับทาง SMS หลังแจ้งปัญหา" },
+                            { icon: "📱", title: "ค้นหาด้วยเบอร์โทร", desc: "ใช้เบอร์โทรที่กรอกตอนแจ้งปัญหาเพื่อดูทุกเคส" },
+                            { icon: "🕐", title: "ตอบกลับใน 24 ชม.", desc: "ติดตามสถานะได้ตลอด 24 ชั่วโมง ทุกวัน" },
+                        ].map((item, i) => (
+                            <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 flex items-start gap-4">
+                                <span className="text-3xl shrink-0">{item.icon}</span>
+                                <div>
+                                    <p className="text-slate-800 font-bold text-lg leading-tight">{item.title}</p>
+                                    <p className="text-slate-500 text-base mt-1 leading-snug">{item.desc}</p>
+                                </div>
                             </div>
-                        )}
+                        ))}
                     </div>
+
+                    {error && (
+                        <div className="mt-5 p-5 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 text-red-600 text-lg font-medium animate-in fade-in slide-in-from-top-2">
+                            <AlertCircle className="w-6 h-6 shrink-0" />
+                            {error}
+                        </div>
+                    )}
 
                     {/* Search Results (Phone) */}
                     {casesList.length > 0 && !caseData && (
@@ -577,10 +594,10 @@ export default function TrackPage() {
 
                             {/* Chat Input Area (Fixed at bottom) */}
                             {caseData.status !== "CLOSED" && (
-                                <div className="bg-white border-t border-indigo-100 p-4 shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+                                <div className="bg-gradient-to-b from-indigo-50 to-white border-t-2 border-indigo-200 p-5 shrink-0 shadow-[0_-8px_30px_-8px_rgba(99,102,241,0.15)]">
                                     <div className="flex items-center gap-2 mb-3 px-2">
                                         <MessageCircle className="w-4 h-4 text-indigo-600" />
-                                        <h4 className="text-sm font-bold text-indigo-900 tracking-wide">ตอบกลับ / ให้ข้อมูลเพิ่มเติม</h4>
+                                        <h4 className="text-base font-bold text-indigo-700 tracking-wide">ตอบกลับ / ให้ข้อมูลเพิ่มเติม</h4>
                                     </div>
 
                                     <div className="flex flex-col sm:flex-row gap-3">
@@ -589,7 +606,7 @@ export default function TrackPage() {
                                                 value={replyNote}
                                                 onChange={(e) => setReplyNote(e.target.value)}
                                                 placeholder="พิมพ์ข้อความตอบกลับเจ้าหน้าที่..."
-                                                className="w-full bg-slate-50 border-2 border-indigo-100 rounded-2xl py-3 px-4 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 outline-none transition-all resize-none min-h-[56px] text-[15px] placeholder:text-slate-400 custom-scrollbar"
+                                                className="w-full bg-white border-2 border-indigo-300 rounded-2xl py-3.5 px-4 focus:ring-4 focus:ring-indigo-500/15 focus:border-indigo-500 outline-none transition-all resize-none min-h-[60px] text-base text-slate-800 placeholder:text-slate-400 custom-scrollbar shadow-sm"
                                                 rows={1}
                                             />
                                         </div>

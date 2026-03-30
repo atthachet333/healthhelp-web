@@ -67,12 +67,12 @@ export async function loginAction(email: string, password: string) {
         const user = await prisma.user.findUnique({ where: { email } });
 
         if (!user) {
-            console.log(`[LOGIN FAILED] User not found the DB`);
+            console.log(`[LOGIN FAILED] User not found: ${email}`);
             return { success: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
         }
         if (!user.active) {
-            console.log(`[LOGIN FAILED] User is inactive`);
-            return { success: false, error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" };
+            console.log(`[LOGIN FAILED] User inactive: ${email}`);
+            return { success: false, error: "บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ" };
         }
 
         const valid = await compare(password, user.passwordHash);
@@ -82,14 +82,13 @@ export async function loginAction(email: string, password: string) {
         }
 
         console.log(`[LOGIN SUCCESS] User: ${user.email} (${user.role})`);
-        // Return user data (exclude password)
         return {
             success: true,
             user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
         };
     } catch (error) {
         console.error("Login error:", error);
-        return { success: false, error: "เกิดข้อผิดพลาด" };
+        return { success: false, error: "เกิดข้อผิดพลาด กรุณาลองใหม่" };
     }
 }
 
@@ -294,7 +293,8 @@ export async function getCases(params: {
         prisma.case.count({ where: where as any }),
     ]);
 
-    return { data, total, page, totalPages: Math.ceil(total / limit) };
+    // ✨ จุดที่แก้ไข: เพิ่มตัวแปร cases: data เข้าไปเพื่อให้หน้าเพจหาเจอ
+    return { cases: data, data, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 // ============ CASE DETAIL ============
@@ -319,10 +319,10 @@ export async function getCaseById(id: string) {
 
 // ============ UPDATE CASE ============
 export async function addCaseUpdate(
-    caseId: string, 
-    userId: string, 
-    note: string, 
-    newStatus?: string, 
+    caseId: string,
+    userId: string,
+    note: string,
+    newStatus?: string,
     isPublic?: boolean,
     attachments?: { fileName: string; fileUrl: string; fileKey?: string; fileType?: string }[]
 ) {
@@ -332,7 +332,7 @@ export async function addCaseUpdate(
             return { success: false, error: "ไม่มีสิทธิ์ในการแก้ไขเคส" };
         }
 
-        const caseData = await prisma.case.findUnique({ 
+        const caseData = await prisma.case.findUnique({
             where: { id: caseId },
             include: { reporter: true }
         });
