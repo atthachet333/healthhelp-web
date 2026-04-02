@@ -37,8 +37,8 @@ function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
     return (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={onClose}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={alt} className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
-            <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center font-bold">✕</button>
+            <img src={src} alt={alt} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
+            <button onClick={onClose} className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-xl font-bold">✕</button>
         </div>
     );
 }
@@ -46,16 +46,16 @@ function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
 // ── Status Badge ──────────────────────────────────────────────────────────────
 function StatusBadgeLarge({ status }: { status: string }) {
     const configs: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
-        OPEN:         { label: "รอรับเรื่อง",    bg: "bg-amber-500/15",  text: "text-amber-300",  border: "border-amber-500/40",  dot: "bg-amber-400" },
-        IN_PROGRESS:  { label: "กำลังดำเนินการ", bg: "bg-blue-500/15",   text: "text-blue-300",   border: "border-blue-500/40",   dot: "bg-blue-400" },
-        WAITING_INFO: { label: "รอข้อมูลเพิ่ม",  bg: "bg-orange-500/15", text: "text-orange-300", border: "border-orange-500/40", dot: "bg-orange-400" },
-        RESOLVED:     { label: "แก้ไขแล้ว",       bg: "bg-green-500/15",  text: "text-green-300",  border: "border-green-500/40",  dot: "bg-green-400" },
-        CLOSED:       { label: "ปิดเคส",          bg: "bg-slate-500/15",  text: "text-slate-400",  border: "border-slate-500/40",  dot: "bg-slate-500" },
+        OPEN: { label: "รอรับเรื่อง", bg: "bg-amber-500/15", text: "text-amber-300", border: "border-amber-500/40", dot: "bg-amber-400" },
+        IN_PROGRESS: { label: "กำลังดำเนินการ", bg: "bg-blue-500/15", text: "text-blue-300", border: "border-blue-500/40", dot: "bg-blue-400" },
+        WAITING_INFO: { label: "รอข้อมูลเพิ่ม", bg: "bg-orange-500/15", text: "text-orange-300", border: "border-orange-500/40", dot: "bg-orange-400" },
+        RESOLVED: { label: "แก้ไขแล้ว", bg: "bg-green-500/15", text: "text-green-300", border: "border-green-500/40", dot: "bg-green-400" },
+        CLOSED: { label: "ปิดเคส", bg: "bg-slate-500/15", text: "text-slate-400", border: "border-slate-500/40", dot: "bg-slate-500" },
     };
     const cfg = configs[status] ?? { label: status, bg: "bg-slate-500/15", text: "text-slate-400", border: "border-slate-500/40", dot: "bg-slate-500" };
     return (
-        <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-sm font-extrabold tracking-wide ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-            <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+        <span className={`inline-flex items-center gap-2.5 px-5 py-2.5 rounded-xl border-2 text-base font-extrabold tracking-wide ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+            <span className={`w-3 h-3 rounded-full shrink-0 ${cfg.dot}`} />
             {cfg.label}
         </span>
     );
@@ -64,13 +64,13 @@ function StatusBadgeLarge({ status }: { status: string }) {
 // ── Info Row ──────────────────────────────────────────────────────────────────
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
     return (
-        <div className="flex items-start gap-3 py-3 border-b border-[#1e2d4a] last:border-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center shrink-0 mt-0.5">
+        <div className="flex items-start gap-4 py-4 border-b border-[#1e2d4a] last:border-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center shrink-0 mt-0.5">
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">{label}</p>
-                <div className="text-sm font-bold text-slate-200 break-all">{value}</div>
+                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
+                <div className="text-base font-bold text-slate-200 break-all">{value}</div>
             </div>
         </div>
     );
@@ -91,6 +91,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
     const [uploadingFiles, setUploadingFiles] = useState(false);
     const [assigneeId, setAssigneeId] = useState(caseData.assignee?.id ?? "");
     const [assignLoading, setAssignLoading] = useState(false);
+    const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
     const currentUser = typeof window !== "undefined"
         ? JSON.parse(localStorage.getItem("healthhelp_user") || "{}")
@@ -172,19 +173,55 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
     const allAttachments = caseData.updates.flatMap(u => u.attachments || []);
 
     return (
-        <div className="space-y-6 font-sans">
+        <div className="space-y-8 font-sans">
             {lightboxSrc && <ImageLightbox src={lightboxSrc} alt="ขยาย" onClose={() => setLightboxSrc(null)} />}
 
             {/* Delete Confirm Modal */}
             {deleteConfirm && (
                 <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-[#111a2e] p-8 rounded-3xl max-w-md w-full border border-[#1e2d4a] shadow-2xl">
-                        <h3 className="text-xl font-bold text-white mb-4">ยืนยันการลบไฟล์แนบ?</h3>
-                        <p className="text-slate-400 text-sm mb-6 break-all">📎 {deleteConfirm.fileName}</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-colors">ยกเลิก</button>
-                            <button onClick={handleDelete} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors">
-                                {deletingId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} ลบถาวร
+                        <h3 className="text-2xl font-bold text-white mb-4">ยืนยันการลบไฟล์แนบ?</h3>
+                        <p className="text-slate-400 text-base mb-6 break-all">📎 {deleteConfirm.fileName}</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-colors text-lg">ยกเลิก</button>
+                            <button onClick={handleDelete} className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors text-lg">
+                                {deletingId ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />} ลบถาวร
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Close Case Confirm Modal */}
+            {showCloseConfirm && (
+                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-[#111a2e] p-8 rounded-3xl max-w-lg w-full border-2 border-red-500/40 shadow-2xl">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
+                                <Lock className="w-8 h-8 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-extrabold text-white">ยืนยันการปิดเคส?</h3>
+                                <p className="text-slate-400 text-sm mt-1">เคส {caseData.caseNo} จะถูกปิดถาวร</p>
+                            </div>
+                        </div>
+                        <p className="text-slate-300 text-base mb-8 bg-[#0b1121] border border-[#1e2d4a] rounded-2xl p-5 leading-relaxed">
+                            เมื่อปิดเคสแล้ว สถานะจะเปลี่ยนเป็น <span className="font-bold text-slate-100">"ปิดเคส"</span> และจะแจ้งผู้แจ้งปัญหาทราบ คุณแน่ใจหรือไม่?
+                        </p>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setShowCloseConfirm(false)}
+                                className="flex-1 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-colors text-lg"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                onClick={async () => { setShowCloseConfirm(false); await handleSubmitInternal(); }}
+                                disabled={submittingInternal}
+                                className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-extrabold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 text-lg"
+                            >
+                                {submittingInternal ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
+                                ยืนยันปิดเคส
                             </button>
                         </div>
                     </div>
@@ -192,55 +229,54 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
             )}
 
             {/* ── Top Bar ── */}
-            <div className="flex items-center gap-4 flex-wrap">
-                <Link href="/admin/cases" className="p-2.5 bg-[#111a2e] border border-[#1e2d4a] rounded-xl text-slate-300 hover:bg-[#1a2540] hover:text-white transition-colors">
-                    <ArrowLeft className="w-5 h-5" />
+            <div className="flex items-center gap-5 flex-wrap">
+                <Link href="/admin/cases" className="p-3 bg-[#111a2e] border border-[#1e2d4a] rounded-xl text-slate-300 hover:bg-[#1a2540] hover:text-white transition-colors">
+                    <ArrowLeft className="w-6 h-6" />
                 </Link>
-                <h2 className="text-2xl font-extrabold text-white font-mono tracking-tight">{caseData.caseNo}</h2>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight">{caseData.caseNo}</h2>
                 <StatusBadgeLarge status={caseData.status} />
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${getPriorityColor(caseData.priority)}`}>
-                    <Zap className="w-3.5 h-3.5" />
+                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border ${getPriorityColor(caseData.priority)}`}>
+                    <Zap className="w-4 h-4" />
                     {getPriorityLabel(caseData.priority)}
                 </span>
             </div>
 
             {/* ── Main 2-Column Layout ── */}
-            <div className="flex flex-col xl:flex-row gap-6 items-start">
+            <div className="flex flex-col xl:flex-row gap-8 items-start">
 
-                {/* ════ LEFT (70%) ════ */}
-                <div className="w-full xl:flex-1 space-y-5 min-w-0">
+                {/* ════ LEFT (Main Content) ════ */}
+                <div className="w-full xl:flex-1 space-y-8 min-w-0">
 
                     {/* Problem Summary Card */}
-                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-6">
-                        <h3 className="text-xl font-extrabold text-white mb-2 leading-snug">{caseData.problemSummary}</h3>
-                        <p className="text-slate-400 text-base whitespace-pre-wrap leading-relaxed">{caseData.description || "ไม่มีรายละเอียด"}</p>
+                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-8">
+                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white mb-4 leading-snug">{caseData.problemSummary}</h3>
+                        <p className="text-slate-300 text-lg whitespace-pre-wrap leading-relaxed">{caseData.description || "ไม่มีรายละเอียด"}</p>
                     </div>
 
                     {/* Chat Timeline */}
-                    <div className="bg-[#0b1121] border border-[#1e2d4a] rounded-3xl p-5 h-[420px] overflow-y-auto flex flex-col gap-4">
+                    <div className="bg-[#0b1121] border border-[#1e2d4a] rounded-3xl p-6 h-[500px] sm:h-[600px] overflow-y-auto flex flex-col gap-5">
                         {caseData.updates.length === 0 && (
-                            <div className="flex-1 flex items-center justify-center text-slate-600 text-sm italic">ยังไม่มีการสื่อสาร</div>
+                            <div className="flex-1 flex items-center justify-center text-slate-500 text-lg italic">ยังไม่มีการสื่อสาร</div>
                         )}
                         {caseData.updates.map(u => (
                             <div key={u.id} className={`flex ${u.user ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${
-                                    u.user
+                                <div className={`max-w-[85%] p-5 rounded-2xl shadow-md ${u.user
                                         ? u.isPublic
                                             ? "bg-indigo-600 text-white rounded-tr-none"
                                             : "bg-[#1a2540] text-slate-200 border border-[#253354] rounded-tr-none"
                                         : "bg-[#111a2e] text-slate-200 border border-[#1e2d4a] rounded-tl-none"
-                                }`}>
-                                    <div className="flex items-center gap-2 mb-1 text-[10px] opacity-60 font-bold uppercase">
+                                    }`}>
+                                    <div className="flex items-center gap-2 mb-2 text-xs opacity-70 font-bold uppercase tracking-wide">
                                         <span>{u.user?.fullName || "ผู้แจ้ง"}</span> •
                                         <span>{formatDateTime(u.createdAt)}</span>
-                                        {!u.isPublic && u.user && <Lock className="w-3 h-3 text-amber-400" />}
+                                        {!u.isPublic && u.user && <Lock className="w-4 h-4 text-amber-400" />}
                                     </div>
-                                    {u.note && <p className="text-sm leading-relaxed">{u.note}</p>}
+                                    {u.note && <p className="text-base sm:text-lg leading-relaxed">{u.note}</p>}
                                     {u.attachments?.map(f => (
-                                        <div key={f.id} className="mt-2">
+                                        <div key={f.id} className="mt-3">
                                             {f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i)
-                                                ? <img src={f.fileUrl} alt="attach" className="w-40 h-40 object-cover rounded-xl cursor-zoom-in border border-black/10" onClick={() => setLightboxSrc(f.fileUrl)} />
-                                                : <a href={f.fileUrl} target="_blank" className="flex items-center gap-2 text-xs bg-black/20 p-2 rounded-lg"><FileText className="w-4 h-4" /> {f.fileName}</a>
+                                                ? <img src={f.fileUrl} alt="attach" className="w-48 h-48 sm:w-64 sm:h-64 object-cover rounded-xl cursor-zoom-in border border-black/10" onClick={() => setLightboxSrc(f.fileUrl)} />
+                                                : <a href={f.fileUrl} target="_blank" className="flex items-center gap-2 text-sm bg-black/20 p-3 rounded-xl"><FileText className="w-5 h-5" /> {f.fileName}</a>
                                             }
                                         </div>
                                     ))}
@@ -250,45 +286,71 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                     </div>
 
                     {/* Public Chat Input */}
-                    <div className="bg-[#111a2e] border border-[#1e2d4a] rounded-3xl p-5 space-y-4">
-                        <p className="text-xs font-extrabold text-slate-500 uppercase tracking-widest">ตอบกลับผู้แจ้ง (ลูกค้าเห็น)</p>
+                    <div className="bg-[#111a2e] border border-[#1e2d4a] rounded-3xl p-6 sm:p-8 space-y-5">
+                        <p className="text-sm font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Send className="w-5 h-5 text-indigo-400" />
+                            ตอบกลับผู้แจ้ง (ลูกค้าเห็น)
+                        </p>
                         <textarea
                             value={publicNote}
                             onChange={e => setPublicNote(e.target.value)}
-                            placeholder="พิมพ์ข้อความตอบกลับผู้แจ้ง..."
-                            className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 rounded-2xl p-4 text-slate-200 placeholder:text-slate-600 text-base min-h-[100px] outline-none transition-colors"
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if ((publicNote.trim() || publicFiles.length > 0) && !submittingPublic && !uploadingFiles) {
+                                        handleSubmitPublic();
+                                    }
+                                }
+                            }}
+                            placeholder="พิมพ์ข้อความตอบกลับผู้แจ้ง... (กด Enter เพื่อส่ง)"
+                            className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 rounded-2xl p-5 text-slate-200 placeholder:text-slate-600 text-lg min-h-[120px] outline-none transition-colors"
                         />
                         <div className="flex justify-between items-center">
-                            <label className="cursor-pointer text-indigo-400 text-sm flex items-center gap-2 hover:text-indigo-300 font-bold">
-                                <Paperclip className="w-4 h-4" />
+                            <label className="cursor-pointer text-indigo-400 text-base flex items-center gap-2 hover:text-indigo-300 font-bold bg-indigo-500/10 px-4 py-2 rounded-xl transition-colors">
+                                <Paperclip className="w-5 h-5" />
                                 {publicFiles.length > 0 ? `${publicFiles.length} ไฟล์เลือกแล้ว` : "แนบไฟล์"}
                                 <input type="file" multiple className="hidden" onChange={async e => { if (e.target.files) setPublicFiles(await compressImages(Array.from(e.target.files))); }} />
                             </label>
                             <button
                                 onClick={handleSubmitPublic}
-                                disabled={submittingPublic || uploadingFiles}
-                                className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-all shadow-md disabled:opacity-60"
+                                disabled={(!publicNote.trim() && publicFiles.length === 0) || submittingPublic || uploadingFiles}
+                                className="flex items-center gap-2 px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-base font-bold transition-all shadow-md disabled:opacity-60"
                             >
-                                {submittingPublic ? <Loader2 className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />}
-                                ส่งแชท
+                                {submittingPublic ? <Loader2 className="animate-spin w-5 h-5" /> : <Send className="w-5 h-5" />}
+                                ส่งข้อความ
                             </button>
                         </div>
                     </div>
 
                     {/* Internal Note + Status */}
-                    <div className="bg-[#0b1121] border border-[#1e2d4a] rounded-3xl p-5 space-y-4">
-                        <p className="text-xs font-extrabold text-slate-500 uppercase tracking-widest">บันทึกภายใน / จัดการสถานะ (ลูกค้าไม่เห็น)</p>
+                    <div className="bg-[#0b1121] border border-[#1e2d4a] rounded-3xl p-6 sm:p-8 space-y-5">
+                        <p className="text-sm font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Lock className="w-5 h-5 text-slate-400" />
+                            บันทึกภายใน / จัดการสถานะ (ลูกค้าไม่เห็น)
+                        </p>
                         <textarea
                             value={internalNote}
                             onChange={e => setInternalNote(e.target.value)}
-                            placeholder="โน้ตเฉพาะแอดมิน (ลูกค้าไม่เห็น)..."
-                            className="w-full bg-[#111a2e] border border-[#1e2d4a] focus:border-indigo-500 rounded-2xl p-4 text-slate-200 placeholder:text-slate-600 text-base min-h-[80px] outline-none transition-colors"
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if ((internalNote.trim() || newStatus || internalFiles.length > 0) && !submittingInternal && !uploadingFiles) {
+                                        if (newStatus === "CLOSED") {
+                                            setShowCloseConfirm(true);
+                                        } else {
+                                            handleSubmitInternal();
+                                        }
+                                    }
+                                }
+                            }}
+                            placeholder="โน้ตเฉพาะแอดมิน (ลูกค้าไม่เห็น)... (กด Enter เพื่อบันทึก)"
+                            className="w-full bg-[#111a2e] border-2 border-[#1e2d4a] focus:border-indigo-500 rounded-2xl p-5 text-slate-200 placeholder:text-slate-600 text-lg min-h-[120px] outline-none transition-colors"
                         />
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex flex-col sm:flex-row gap-4">
                             <select
                                 value={newStatus}
                                 onChange={e => setNewStatus(e.target.value)}
-                                className="bg-[#111a2e] border border-[#1e2d4a] text-slate-200 rounded-xl px-4 py-3 text-sm flex-1 outline-none focus:border-indigo-500 transition-colors"
+                                className="bg-[#111a2e] border-2 border-[#1e2d4a] text-slate-200 rounded-2xl px-5 py-4 text-base font-medium flex-1 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
                             >
                                 <option value="">— คงสถานะเดิม —</option>
                                 <option value="OPEN">รอรับเรื่อง (OPEN)</option>
@@ -297,59 +359,71 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                                 <option value="RESOLVED">แก้ไขแล้ว (RESOLVED)</option>
                                 <option value="CLOSED">ปิดเคส (CLOSED)</option>
                             </select>
-                            <label className="cursor-pointer text-slate-500 text-sm flex items-center gap-2 hover:text-slate-300 font-bold px-1 transition-colors">
-                                <Paperclip className="w-4 h-4" />
+                            <label className="cursor-pointer text-slate-400 text-base flex items-center gap-2 hover:text-slate-200 font-bold px-4 py-4 bg-[#111a2e] border border-[#1e2d4a] rounded-2xl transition-colors">
+                                <Paperclip className="w-5 h-5" />
                                 {internalFiles.length > 0 ? `${internalFiles.length} ไฟล์` : "แนบไฟล์"}
                                 <input type="file" multiple className="hidden" onChange={async e => { if (e.target.files) setInternalFiles(await compressImages(Array.from(e.target.files))); }} />
                             </label>
-                            <button
-                                onClick={handleSubmitInternal}
-                                disabled={submittingInternal}
-                                className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-60"
-                            >
-                                {submittingInternal ? <Loader2 className="animate-spin w-4 h-4" /> : "💾 บันทึกภายใน"}
-                            </button>
+
+                            {/* Show red close-case button when CLOSED is selected; otherwise show normal save */}
+                            {newStatus === "CLOSED" ? (
+                                <button
+                                    onClick={() => setShowCloseConfirm(true)}
+                                    disabled={submittingInternal}
+                                    className="flex items-center justify-center gap-2 px-8 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-base font-extrabold transition-all disabled:opacity-60 shadow-lg shadow-red-900/40 animate-pulse"
+                                >
+                                    <Lock className="w-5 h-5" /> ยืนยันปิดเคส
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSubmitInternal}
+                                    disabled={(!internalNote.trim() && !newStatus && internalFiles.length === 0) || submittingInternal || uploadingFiles}
+                                    className="flex items-center justify-center gap-2 px-8 py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl text-base font-bold transition-all disabled:opacity-60"
+                                >
+                                    {submittingInternal ? <Loader2 className="animate-spin w-5 h-5" /> : "💾 บันทึกภายใน"}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* ════ RIGHT: Information Panel (30%) ════ */}
-                <div className="w-full xl:w-96 shrink-0 space-y-5">
+                {/* ════ RIGHT: Information Panel (Wider) ════ */}
+                <div className="w-full xl:w-[450px] shrink-0 space-y-8">
 
                     {/* ── Card: Case Info ── */}
-                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-6">
-                        <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Hash className="w-4 h-4 text-indigo-400" />
+                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-8">
+                        <h4 className="text-sm font-extrabold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <Hash className="w-5 h-5 text-indigo-400" />
                             ข้อมูลเคส
                         </h4>
                         <div>
                             <InfoRow
-                                icon={<Hash className="w-4 h-4 text-indigo-400" />}
+                                icon={<Hash className="w-5 h-5 text-indigo-400" />}
                                 label="รหัสติดตาม"
                                 value={
-                                    <span className="font-mono text-indigo-300 bg-indigo-500/15 border border-indigo-500/30 px-2 py-1 rounded-lg text-sm">
+                                    <span className="font-mono text-indigo-300 bg-indigo-500/15 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-base">
                                         {caseData.trackingCode}
                                     </span>
                                 }
                             />
                             <InfoRow
-                                icon={<Tag className="w-4 h-4 text-slate-400" />}
+                                icon={<Tag className="w-5 h-5 text-slate-400" />}
                                 label="หมวดหมู่"
                                 value={caseData.category.name}
                             />
                             <InfoRow
-                                icon={<Calendar className="w-4 h-4 text-slate-400" />}
+                                icon={<Calendar className="w-5 h-5 text-slate-400" />}
                                 label="วันที่แจ้ง"
                                 value={formatDateTime(caseData.createdAt)}
                             />
                             <InfoRow
-                                icon={<Clock className="w-4 h-4 text-slate-400" />}
+                                icon={<Clock className="w-5 h-5 text-slate-400" />}
                                 label="อัปเดตล่าสุด"
                                 value={formatDateTime(caseData.updatedAt)}
                             />
                             {caseData.slaDueAt && (
                                 <InfoRow
-                                    icon={<AlertCircle className={`w-4 h-4 ${slaOk ? "text-green-400" : "text-red-400"}`} />}
+                                    icon={<AlertCircle className={`w-5 h-5 ${slaOk ? "text-green-400" : "text-red-400"}`} />}
                                     label="กำหนด SLA"
                                     value={
                                         <span className={`font-bold ${slaOk ? "text-green-400" : "text-red-400"}`}>
@@ -360,7 +434,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                                 />
                             )}
                             <InfoRow
-                                icon={<ShieldCheck className="w-4 h-4 text-slate-400" />}
+                                icon={<ShieldCheck className="w-5 h-5 text-slate-400" />}
                                 label="ช่องทาง"
                                 value={getChannelLabel(caseData.channel)}
                             />
@@ -368,19 +442,19 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                     </div>
 
                     {/* ── Card: Reporter Info ── */}
-                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-6">
-                        <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <User className="w-4 h-4 text-indigo-400" />
+                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-8">
+                        <h4 className="text-sm font-extrabold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <User className="w-5 h-5 text-indigo-400" />
                             ข้อมูลผู้แจ้ง
                         </h4>
                         <div>
                             <InfoRow
-                                icon={<User className="w-4 h-4 text-indigo-400" />}
+                                icon={<User className="w-5 h-5 text-indigo-400" />}
                                 label="ชื่อ-นามสกุล"
                                 value={caseData.reporter.fullName}
                             />
                             <InfoRow
-                                icon={<Phone className="w-4 h-4 text-green-400" />}
+                                icon={<Phone className="w-5 h-5 text-green-400" />}
                                 label="เบอร์โทรศัพท์"
                                 value={
                                     <a href={`tel:${caseData.reporter.phone}`} className="text-indigo-400 hover:text-indigo-300 hover:underline font-bold transition-colors">
@@ -390,7 +464,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                             />
                             {caseData.reporter.email && (
                                 <InfoRow
-                                    icon={<Mail className="w-4 h-4 text-blue-400" />}
+                                    icon={<Mail className="w-5 h-5 text-blue-400" />}
                                     label="อีเมล"
                                     value={
                                         <a href={`mailto:${caseData.reporter.email}`} className="text-indigo-400 hover:text-indigo-300 hover:underline transition-colors">
@@ -401,7 +475,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                             )}
                             {caseData.reporter.address && (
                                 <InfoRow
-                                    icon={<MapPin className="w-4 h-4 text-rose-400" />}
+                                    icon={<MapPin className="w-5 h-5 text-rose-400" />}
                                     label="ที่อยู่"
                                     value={caseData.reporter.address}
                                 />
@@ -410,35 +484,35 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                     </div>
 
                     {/* ── Card: Assignee Selector ── */}
-                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-6">
-                        <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <UserCheck className="w-4 h-4 text-indigo-400" />
+                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-8">
+                        <h4 className="text-sm font-extrabold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <UserCheck className="w-5 h-5 text-indigo-400" />
                             ผู้รับผิดชอบเคส
                         </h4>
 
                         {/* Current Assignee */}
-                        <div className="flex items-center gap-3 mb-4 p-3 bg-[#0b1121] rounded-2xl border border-[#1e2d4a]">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                                <span className="text-white font-extrabold text-base">
+                        <div className="flex items-center gap-4 mb-5 p-4 bg-[#0b1121] rounded-2xl border border-[#1e2d4a]">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                                <span className="text-white font-extrabold text-xl">
                                     {caseData.assignee ? caseData.assignee.fullName.charAt(0) : "?"}
                                 </span>
                             </div>
                             <div>
-                                <p className="text-slate-200 font-bold text-sm">
+                                <p className="text-slate-200 font-bold text-base">
                                     {caseData.assignee ? caseData.assignee.fullName : "ยังไม่มีผู้รับผิดชอบ"}
                                 </p>
-                                <p className="text-slate-500 text-xs mt-0.5">
+                                <p className="text-slate-500 text-sm mt-1">
                                     {caseData.assignee ? "ผู้รับผิดชอบปัจจุบัน" : "กรุณามอบหมายเคส"}
                                 </p>
                             </div>
                         </div>
 
                         {canAssign ? (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 <select
                                     value={assigneeId}
                                     onChange={e => setAssigneeId(e.target.value)}
-                                    className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 text-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold outline-none transition-colors"
+                                    className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 text-slate-200 rounded-2xl px-5 py-4 text-base font-semibold outline-none transition-colors cursor-pointer"
                                 >
                                     <option value="">— เลือกผู้รับผิดชอบ —</option>
                                     {staffUsers.map(u => (
@@ -450,16 +524,16 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                                 <button
                                     onClick={handleAssign}
                                     disabled={!assigneeId || assignLoading}
-                                    className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-2xl text-sm font-extrabold transition-all shadow-md"
+                                    className="w-full flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-2xl text-base font-extrabold transition-all shadow-md"
                                 >
                                     {assignLoading
-                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> กำลังบันทึก...</>
-                                        : <><UserPlus className="w-4 h-4" /> มอบหมาย / เปลี่ยนผู้รับผิดชอบ</>
+                                        ? <><Loader2 className="w-5 h-5 animate-spin" /> กำลังบันทึก...</>
+                                        : <><UserPlus className="w-5 h-5" /> มอบหมาย / เปลี่ยนผู้รับผิดชอบ</>
                                     }
                                 </button>
                             </div>
                         ) : (
-                            <p className="text-slate-600 text-xs text-center italic py-2">
+                            <p className="text-slate-600 text-sm text-center italic py-2 bg-[#0b1121] rounded-xl border border-[#1e2d4a]">
                                 เฉพาะ Admin / Supervisor เท่านั้นที่มอบหมายเคสได้
                             </p>
                         )}
@@ -467,57 +541,57 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
 
                     {/* ── Card: CSAT ── */}
                     {caseData.csatRating && (
-                        <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-6">
-                            <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                <Star className="w-4 h-4 text-amber-400" />
+                        <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-8">
+                            <h4 className="text-sm font-extrabold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Star className="w-5 h-5 text-amber-400" />
                                 ความพึงพอใจ (CSAT)
                             </h4>
-                            <div className="flex items-center gap-3">
-                                <div className="flex gap-1">
+                            <div className="flex items-center gap-4">
+                                <div className="flex gap-1.5">
                                     {[1, 2, 3, 4, 5].map(s => (
-                                        <Star key={s} className={`w-6 h-6 ${s <= caseData.csatRating!.score ? "text-amber-400 fill-amber-400" : "text-slate-700 fill-slate-700"}`} />
+                                        <Star key={s} className={`w-8 h-8 ${s <= caseData.csatRating!.score ? "text-amber-400 fill-amber-400" : "text-slate-700 fill-slate-700"}`} />
                                     ))}
                                 </div>
-                                <span className="text-2xl font-extrabold text-white">{caseData.csatRating.score}<span className="text-base text-slate-500 font-normal">/5</span></span>
+                                <span className="text-4xl font-extrabold text-white">{caseData.csatRating.score}<span className="text-xl text-slate-500 font-normal">/5</span></span>
                             </div>
                             {caseData.csatRating.comment && (
-                                <p className="text-slate-400 text-sm mt-3 italic leading-relaxed">"{caseData.csatRating.comment}"</p>
+                                <p className="text-slate-300 text-base mt-4 italic leading-relaxed bg-[#0b1121] p-4 rounded-xl border border-[#1e2d4a]">"{caseData.csatRating.comment}"</p>
                             )}
                         </div>
                     )}
 
                     {/* ── Card: Attachments ── */}
-                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-6">
-                        <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Paperclip className="w-4 h-4 text-indigo-400" />
+                    <div className="bg-[#111a2e] rounded-3xl border border-[#1e2d4a] shadow-lg p-8">
+                        <h4 className="text-sm font-extrabold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <Paperclip className="w-5 h-5 text-indigo-400" />
                             ไฟล์แนบทั้งหมด ({allAttachments.length})
                         </h4>
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                             {allAttachments.map(f => (
                                 <div
                                     key={f.id}
-                                    className="group flex items-center gap-3 p-3 bg-[#0b1121] hover:bg-indigo-500/10 border border-[#1e2d4a] hover:border-indigo-500/40 rounded-2xl transition-all cursor-pointer"
+                                    className="group flex items-center gap-4 p-4 bg-[#0b1121] hover:bg-indigo-500/10 border border-[#1e2d4a] hover:border-indigo-500/40 rounded-2xl transition-all cursor-pointer"
                                     onClick={() => f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? setLightboxSrc(f.fileUrl) : window.open(f.fileUrl)}
                                 >
-                                    <div className="w-9 h-9 rounded-xl bg-[#111a2e] border border-[#1e2d4a] flex items-center justify-center shrink-0">
+                                    <div className="w-12 h-12 rounded-xl bg-[#111a2e] border border-[#1e2d4a] flex items-center justify-center shrink-0">
                                         {f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i)
-                                            ? <ImageIcon className="w-4 h-4 text-indigo-400" />
-                                            : <FileText className="w-4 h-4 text-indigo-400" />
+                                            ? <ImageIcon className="w-6 h-6 text-indigo-400" />
+                                            : <FileText className="w-6 h-6 text-indigo-400" />
                                         }
                                     </div>
-                                    <span className="text-sm text-slate-300 truncate flex-1 font-medium">{f.fileName}</span>
+                                    <span className="text-base text-slate-300 truncate flex-1 font-medium">{f.fileName}</span>
                                     {canAssign && (
                                         <button
                                             onClick={e => { e.stopPropagation(); setDeleteConfirm({ id: f.id, fileName: f.fileName }); }}
-                                            className="opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                                            className="opacity-0 group-hover:opacity-100 p-2.5 bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"
                                         >
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
                                     )}
                                 </div>
                             ))}
                             {allAttachments.length === 0 && (
-                                <p className="text-center text-sm text-slate-600 py-6 italic">ไม่มีไฟล์แนบ</p>
+                                <p className="text-center text-base text-slate-500 py-8 italic bg-[#0b1121] rounded-2xl border border-[#1e2d4a]">ไม่มีไฟล์แนบ</p>
                             )}
                         </div>
                     </div>

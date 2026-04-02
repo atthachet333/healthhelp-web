@@ -29,10 +29,8 @@ export default function AdminLoginPage() {
         setLoading(false);
 
         if (result.success && result.user) {
-            // เก็บข้อมูล session ไว้ใน localStorage
             localStorage.setItem("healthhelp_user", JSON.stringify(result.user));
-            // เซ็ต cookie admin_auth=true เพื่อให้ middleware ตรวจสอบได้
-            const maxAge = 60 * 60 * 24 * 7; // 7 วัน
+            const maxAge = 60 * 60 * 24 * 7;
             document.cookie = `admin_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
             router.push("/admin/dashboard");
         } else {
@@ -43,50 +41,50 @@ export default function AdminLoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden">
             {/* Background */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#070d1a] via-[#0b1121] to-[#0a1628]" />
-            <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-blue-700 rounded-full filter blur-[160px] opacity-10 pointer-events-none" />
-            <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-indigo-700 rounded-full filter blur-[160px] opacity-10 pointer-events-none" />
+            <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-blue-700 rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-indigo-700 rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
 
-            <div className="relative w-full max-w-md">
+            <div className="relative w-full max-w-2xl">
                 <Link
                     href="/"
-                    className="absolute -top-16 left-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all text-sm font-semibold border border-white/10"
+                    className="absolute -top-20 left-0 flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all text-base font-semibold border border-white/10"
                 >
-                    <ArrowLeft className="w-4 h-4" />
+                    <ArrowLeft className="w-5 h-5" />
                     กลับหน้าหลัก
                 </Link>
 
                 {/* Logo */}
-                <div className="text-center mb-8">
-                    <div className="relative inline-block mb-5">
-                        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/30">
-                            <HeartPulse className="w-10 h-10 text-white" />
+                <div className="text-center mb-10">
+                    <div className="relative inline-block mb-6">
+                        <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/30">
+                            <HeartPulse className="w-16 h-16 text-white" />
                         </div>
-                        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
-                            <ShieldCheck className="w-4 h-4 text-white" />
+                        <div className="absolute -bottom-3 -right-3 w-11 h-11 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+                            <ShieldCheck className="w-6 h-6 text-white" />
                         </div>
                     </div>
-                    <h1 className="text-3xl font-extrabold text-white tracking-tight">HealthHelp</h1>
-                    <p className="text-slate-400 text-base mt-1.5">ระบบจัดการ • สำหรับเจ้าหน้าที่</p>
+                    <h1 className="text-5xl font-extrabold text-white tracking-tight">HealthHelp</h1>
+                    <p className="text-slate-400 text-xl mt-2">ระบบจัดการ • สำหรับเจ้าหน้าที่</p>
                 </div>
 
                 {/* Card */}
                 <div
-                    className="bg-[#111a2e]/80 backdrop-blur-2xl border border-[#1e2d4a]/80 rounded-3xl p-8 md:p-10 shadow-2xl shadow-black/40"
+                    className="bg-[#111a2e]/80 backdrop-blur-2xl border border-[#1e2d4a]/80 rounded-3xl p-10 md:p-14 shadow-2xl shadow-black/40"
                     style={shake ? { animation: "shake 0.5s ease-in-out" } : {}}
                 >
-                    <div className="mb-8">
-                        <h2 className="text-xl font-bold text-white mb-1">เข้าสู่ระบบ</h2>
-                        <p className="text-slate-400 text-sm">กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งาน</p>
+                    <div className="mb-10">
+                        <h2 className="text-3xl font-bold text-white mb-2">เข้าสู่ระบบ</h2>
+                        <p className="text-slate-400 text-lg">กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งาน</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-7">
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-300 mb-2">
-                                <Mail className="w-3.5 h-3.5 inline mr-1.5 text-blue-400" />
+                            <label className="block text-lg font-semibold text-slate-300 mb-3">
+                                <Mail className="w-5 h-5 inline mr-2 text-blue-400" />
                                 อีเมล
                             </label>
                             <input
@@ -96,14 +94,14 @@ export default function AdminLoginPage() {
                                 required
                                 autoFocus
                                 autoComplete="email"
-                                className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-blue-500 rounded-2xl px-5 py-4 text-white text-base placeholder:text-slate-600 outline-none transition-all"
+                                className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-blue-500 rounded-2xl px-6 py-5 text-white text-xl placeholder:text-slate-600 outline-none transition-all"
                             />
                         </div>
 
                         {/* Password */}
                         <div>
-                            <label className="block text-sm font-semibold text-slate-300 mb-2">
-                                <Lock className="w-3.5 h-3.5 inline mr-1.5 text-indigo-400" />
+                            <label className="block text-lg font-semibold text-slate-300 mb-3">
+                                <Lock className="w-5 h-5 inline mr-2 text-indigo-400" />
                                 รหัสผ่าน
                             </label>
                             <div className="relative">
@@ -113,24 +111,24 @@ export default function AdminLoginPage() {
                                     placeholder="••••••••"
                                     required
                                     autoComplete="current-password"
-                                    className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 rounded-2xl px-5 py-4 pr-12 text-white text-base placeholder:text-slate-600 outline-none transition-all"
+                                    className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 rounded-2xl px-6 py-5 pr-16 text-white text-xl placeholder:text-slate-600 outline-none transition-all"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                                     tabIndex={-1}
                                 >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    {showPassword ? <EyeOff className="w-7 h-7" /> : <Eye className="w-7 h-7" />}
                                 </button>
                             </div>
                         </div>
 
                         {/* Error */}
                         {error && (
-                            <div className="flex items-center gap-2.5 bg-red-500/10 border border-red-500/30 rounded-2xl px-4 py-3">
-                                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-                                <p className="text-red-400 text-sm font-medium">{error}</p>
+                            <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-2xl px-5 py-4">
+                                <AlertCircle className="w-6 h-6 text-red-400 shrink-0" />
+                                <p className="text-red-400 text-lg font-medium">{error}</p>
                             </div>
                         )}
 
@@ -138,19 +136,19 @@ export default function AdminLoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-3 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl text-lg font-bold shadow-xl shadow-blue-500/20 transition-all"
+                            className="w-full flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl text-2xl font-bold shadow-xl shadow-blue-500/20 transition-all"
                         >
                             {loading
-                                ? <><Loader2 className="w-5 h-5 animate-spin" /> กำลังตรวจสอบ...</>
-                                : <><ShieldCheck className="w-5 h-5" /> เข้าสู่ระบบ</>
+                                ? <><Loader2 className="w-7 h-7 animate-spin" /> กำลังตรวจสอบ...</>
+                                : <><ShieldCheck className="w-7 h-7" /> เข้าสู่ระบบ</>
                             }
                         </button>
                     </form>
 
                     {/* Demo accounts */}
-                    <div className="mt-8 pt-7 border-t border-slate-700/50">
-                        <p className="text-xs text-slate-500 text-center mb-4 font-semibold uppercase tracking-widest">บัญชีทดสอบ (Demo)</p>
-                        <div className="flex flex-wrap justify-center gap-2.5 text-sm">
+                    <div className="mt-10 pt-8 border-t border-slate-700/50">
+                        <p className="text-sm text-slate-500 text-center mb-5 font-semibold uppercase tracking-widest">บัญชีทดสอบ (Demo)</p>
+                        <div className="flex flex-wrap justify-center gap-3 text-sm">
                             {[
                                 { role: "Admin", email: "admin@healthhelp.com", pass: "password123" },
                                 { role: "Supervisor", email: "supervisor@healthhelp.com", pass: "password123" },
@@ -165,17 +163,17 @@ export default function AdminLoginPage() {
                                         if (emailInput) { emailInput.value = cred.email; emailInput.dispatchEvent(new Event("input", { bubbles: true })); }
                                         if (passInput) { passInput.value = cred.pass; passInput.dispatchEvent(new Event("input", { bubbles: true })); }
                                     }}
-                                    className="px-4 py-2 rounded-full bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700/50 text-xs font-semibold"
+                                    className="px-6 py-3 rounded-full bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700/50 text-base font-semibold"
                                 >
                                     {cred.role}
                                 </button>
                             ))}
                         </div>
-                        <p className="text-center text-slate-600 text-xs mt-3">รหัสผ่านทดสอบ: password123</p>
+                        <p className="text-center text-slate-600 text-base mt-4">รหัสผ่านทดสอบ: password123</p>
                     </div>
                 </div>
 
-                <p className="mt-5 text-center text-slate-600 text-xs">
+                <p className="mt-6 text-center text-slate-600 text-base">
                     🔒 ระบบนี้สำหรับเจ้าหน้าที่เท่านั้น • HealthHelp Admin
                 </p>
             </div>
