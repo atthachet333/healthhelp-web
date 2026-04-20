@@ -2,24 +2,30 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-    const url = request.nextUrl.pathname;
+    const tokenData = request.cookies.get('token') as any;
+    const token = tokenData?.value || tokenData;
 
-    // ตรวจสอบเฉพาะหน้าเว็บที่ขึ้นต้นด้วย /admin
-    if (url.startsWith('/admin')) {
-        // ถ้ากำลังจะเข้าหน้า login ให้ปล่อยผ่าน
-        if (url === '/admin/login') return NextResponse.next();
+    if (request.nextUrl.pathname.startsWith('/admin/login')) {
+        return NextResponse.next();
+    }
 
-        // เช็กว่ามีบัตรผ่าน (Cookie) ไหม
-        const isLoggedIn = request.cookies.get('admin_auth')?.value === 'true';
-
-        // ถ้าไม่มีบัตรผ่าน ให้เตะกลับไปหน้า Login
-        if (!isLoggedIn) {
+    if (
+        request.nextUrl.pathname.startsWith('/admin') ||
+        request.nextUrl.pathname.startsWith('/dashboard')
+    ) {
+        if (!token) {
             return NextResponse.redirect(new URL('/admin/login', request.url));
         }
+
+        // 🟢 เอาตัวเตะออกจาก Dashboard ออกไปแล้ว เพราะตอนนี้ทุกคนดูหน้าสถิติได้
     }
+
     return NextResponse.next();
 }
 
 export const config = {
-    matcher: ['/admin/:path*'],
+    matcher: [
+        '/admin/:path*',
+        '/dashboard/:path*',
+    ],
 };

@@ -8,7 +8,7 @@ import {
     ArrowLeft, Clock, User, AlertCircle,
     UserPlus, Star, Send, Loader2, Phone, Mail, MapPin, Lock,
     Paperclip, FileText, Trash2, ImageIcon, Hash, Calendar,
-    ShieldCheck, Tag, Zap, UserCheck,
+    ShieldCheck, Tag, Zap, UserCheck, Download
 } from "lucide-react";
 import {
     getStatusLabel, getPriorityLabel, getPriorityColor,
@@ -34,16 +34,21 @@ interface CaseData {
 }
 
 function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+    const downloadUrl = src.includes('/api/view-file') ? `${src}&dl=true` : src;
     return (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={onClose}>
+            <div className="absolute top-6 right-6 flex items-center gap-4 z-50">
+                <a href={downloadUrl} download target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-colors shadow-lg" title="ดาวน์โหลดรูปภาพ">
+                    <Download className="w-6 h-6" />
+                </a>
+                <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-xl font-bold">✕</button>
+            </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={alt} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
-            <button onClick={onClose} className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-xl font-bold">✕</button>
+            <img src={src} alt={alt} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl relative z-40" onClick={(e) => e.stopPropagation()} />
         </div>
     );
 }
 
-// ── Status Badge ──────────────────────────────────────────────────────────────
 function StatusBadgeLarge({ status }: { status: string }) {
     const configs: Record<string, { label: string; bg: string; text: string; border: string; dot: string }> = {
         OPEN: { label: "รอรับเรื่อง", bg: "bg-amber-500/15", text: "text-amber-300", border: "border-amber-500/40", dot: "bg-amber-400" },
@@ -61,7 +66,6 @@ function StatusBadgeLarge({ status }: { status: string }) {
     );
 }
 
-// ── Info Row ──────────────────────────────────────────────────────────────────
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
     return (
         <div className="flex items-start gap-4 py-4 border-b border-[#1e2d4a] last:border-0">
@@ -93,9 +97,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
     const [assignLoading, setAssignLoading] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-    const currentUser = typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("healthhelp_user") || "{}")
-        : {};
+    const currentUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("healthhelp_user") || "{}") : {};
     const currentUserRole = currentUser?.role ?? null;
     const canAssign = currentUserRole === "ADMIN" || currentUserRole === "SUPERVISOR";
 
@@ -171,14 +173,13 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
     }
 
     const allAttachments = caseData.updates.flatMap(u => u.attachments || []);
-
     return (
-        <div className="space-y-8 font-sans">
+        <div className="space-y-8 font-sans pb-10">
             {lightboxSrc && <ImageLightbox src={lightboxSrc} alt="ขยาย" onClose={() => setLightboxSrc(null)} />}
 
             {/* Delete Confirm Modal */}
             {deleteConfirm && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-[#111a2e] p-8 rounded-3xl max-w-md w-full border border-[#1e2d4a] shadow-2xl">
                         <h3 className="text-2xl font-bold text-white mb-4">ยืนยันการลบไฟล์แนบ?</h3>
                         <p className="text-slate-400 text-base mb-6 break-all">📎 {deleteConfirm.fileName}</p>
@@ -194,7 +195,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
 
             {/* Close Case Confirm Modal */}
             {showCloseConfirm && (
-                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-[#111a2e] p-8 rounded-3xl max-w-lg w-full border-2 border-red-500/40 shadow-2xl">
                         <div className="flex items-center gap-4 mb-6">
                             <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
@@ -261,10 +262,10 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                         {caseData.updates.map(u => (
                             <div key={u.id} className={`flex ${u.user ? "justify-end" : "justify-start"}`}>
                                 <div className={`max-w-[85%] p-5 rounded-2xl shadow-md ${u.user
-                                        ? u.isPublic
-                                            ? "bg-indigo-600 text-white rounded-tr-none"
-                                            : "bg-[#1a2540] text-slate-200 border border-[#253354] rounded-tr-none"
-                                        : "bg-[#111a2e] text-slate-200 border border-[#1e2d4a] rounded-tl-none"
+                                    ? u.isPublic
+                                        ? "bg-indigo-600 text-white rounded-tr-none"
+                                        : "bg-[#1a2540] text-slate-200 border border-[#253354] rounded-tr-none"
+                                    : "bg-[#111a2e] text-slate-200 border border-[#1e2d4a] rounded-tl-none"
                                     }`}>
                                     <div className="flex items-center gap-2 mb-2 text-xs opacity-70 font-bold uppercase tracking-wide">
                                         <span>{u.user?.fullName || "ผู้แจ้ง"}</span> •
@@ -272,14 +273,31 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                                         {!u.isPublic && u.user && <Lock className="w-4 h-4 text-amber-400" />}
                                     </div>
                                     {u.note && <p className="text-base sm:text-lg leading-relaxed">{u.note}</p>}
-                                    {u.attachments?.map(f => (
-                                        <div key={f.id} className="mt-3">
-                                            {f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i)
-                                                ? <img src={f.fileUrl} alt="attach" className="w-48 h-48 sm:w-64 sm:h-64 object-cover rounded-xl cursor-zoom-in border border-black/10" onClick={() => setLightboxSrc(f.fileUrl)} />
-                                                : <a href={f.fileUrl} target="_blank" className="flex items-center gap-2 text-sm bg-black/20 p-3 rounded-xl"><FileText className="w-5 h-5" /> {f.fileName}</a>
-                                            }
-                                        </div>
-                                    ))}
+                                    {u.attachments?.map(f => {
+                                        // อัปเกรด: สร้าง URL ผ่าน API Bridge
+                                        const safeUrl = `/api/view-file?url=${encodeURIComponent(f.fileUrl)}`;
+                                        const downloadUrl = `/api/view-file?url=${encodeURIComponent(f.fileUrl)}&dl=true`;
+
+                                        return (
+                                            <div key={f.id} className="mt-3">
+                                                {f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? (
+                                                    <div className="relative group/img inline-block">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={safeUrl} alt={f.fileName} className="max-w-[200px] max-h-[200px] sm:max-w-[250px] sm:max-h-[250px] object-cover rounded-xl cursor-zoom-in border border-black/10" onClick={() => setLightboxSrc(safeUrl)} />
+                                                        <a href={downloadUrl} download target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all backdrop-blur-sm shadow-md" title="ดาวน์โหลดรูปภาพ">
+                                                            <Download className="w-4 h-4" />
+                                                        </a>
+                                                    </div>
+                                                ) : (
+                                                    <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm bg-black/20 hover:bg-black/40 transition-colors p-3 rounded-xl w-fit" title="เปิดพรีวิวไฟล์">
+                                                        <FileText className="w-5 h-5 text-indigo-300 shrink-0" />
+                                                        <span className="truncate max-w-[200px] font-medium">{f.fileName}</span>
+                                                        <Download className="w-4 h-4 ml-2 opacity-70 shrink-0" />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         ))}
@@ -305,7 +323,7 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                             placeholder="พิมพ์ข้อความตอบกลับผู้แจ้ง... (กด Enter เพื่อส่ง)"
                             className="w-full bg-[#0b1121] border-2 border-[#1e2d4a] focus:border-indigo-500 rounded-2xl p-5 text-slate-200 placeholder:text-slate-600 text-lg min-h-[120px] outline-none transition-colors"
                         />
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center flex-wrap gap-4">
                             <label className="cursor-pointer text-indigo-400 text-base flex items-center gap-2 hover:text-indigo-300 font-bold bg-indigo-500/10 px-4 py-2 rounded-xl transition-colors">
                                 <Paperclip className="w-5 h-5" />
                                 {publicFiles.length > 0 ? `${publicFiles.length} ไฟล์เลือกแล้ว` : "แนบไฟล์"}
@@ -365,7 +383,6 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                                 <input type="file" multiple className="hidden" onChange={async e => { if (e.target.files) setInternalFiles(await compressImages(Array.from(e.target.files))); }} />
                             </label>
 
-                            {/* Show red close-case button when CLOSED is selected; otherwise show normal save */}
                             {newStatus === "CLOSED" ? (
                                 <button
                                     onClick={() => setShowCloseConfirm(true)}
@@ -490,7 +507,6 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                             ผู้รับผิดชอบเคส
                         </h4>
 
-                        {/* Current Assignee */}
                         <div className="flex items-center gap-4 mb-5 p-4 bg-[#0b1121] rounded-2xl border border-[#1e2d4a]">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
                                 <span className="text-white font-extrabold text-xl">
@@ -567,29 +583,41 @@ export function CaseDetailClient({ caseData, staffUsers }: { caseData: CaseData;
                             ไฟล์แนบทั้งหมด ({allAttachments.length})
                         </h4>
                         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                            {allAttachments.map(f => (
-                                <div
-                                    key={f.id}
-                                    className="group flex items-center gap-4 p-4 bg-[#0b1121] hover:bg-indigo-500/10 border border-[#1e2d4a] hover:border-indigo-500/40 rounded-2xl transition-all cursor-pointer"
-                                    onClick={() => f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? setLightboxSrc(f.fileUrl) : window.open(f.fileUrl)}
-                                >
-                                    <div className="w-12 h-12 rounded-xl bg-[#111a2e] border border-[#1e2d4a] flex items-center justify-center shrink-0">
-                                        {f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i)
-                                            ? <ImageIcon className="w-6 h-6 text-indigo-400" />
-                                            : <FileText className="w-6 h-6 text-indigo-400" />
-                                        }
+                            {allAttachments.map(f => {
+                                // อัปเกรด: สร้าง URL ผ่าน API Bridge
+                                const safeUrl = `/api/view-file?url=${encodeURIComponent(f.fileUrl)}`;
+                                const downloadUrl = `/api/view-file?url=${encodeURIComponent(f.fileUrl)}&dl=true`;
+
+                                return (
+                                    <div
+                                        key={f.id}
+                                        className="group flex items-center gap-4 p-4 bg-[#0b1121] hover:bg-indigo-500/10 border border-[#1e2d4a] hover:border-indigo-500/40 rounded-2xl transition-all cursor-pointer"
+                                        onClick={() => f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i) ? setLightboxSrc(safeUrl) : window.open(safeUrl, '_blank')}
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-[#111a2e] border border-[#1e2d4a] flex items-center justify-center shrink-0">
+                                            {f.fileUrl.match(/\.(jpeg|jpg|png|webp)$/i)
+                                                ? <ImageIcon className="w-6 h-6 text-indigo-400" />
+                                                : <FileText className="w-6 h-6 text-indigo-400" />
+                                            }
+                                        </div>
+                                        <span className="text-base text-slate-300 truncate flex-1 font-medium">{f.fileName}</span>
+
+                                        <a href={downloadUrl} onClick={e => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 p-2.5 bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500 hover:text-white rounded-xl transition-all" title="ดาวน์โหลด">
+                                            <Download className="w-4 h-4" />
+                                        </a>
+
+                                        {canAssign && (
+                                            <button
+                                                onClick={e => { e.stopPropagation(); setDeleteConfirm({ id: f.id, fileName: f.fileName }); }}
+                                                className="opacity-0 group-hover:opacity-100 p-2.5 bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all ml-1"
+                                                title="ลบไฟล์"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
-                                    <span className="text-base text-slate-300 truncate flex-1 font-medium">{f.fileName}</span>
-                                    {canAssign && (
-                                        <button
-                                            onClick={e => { e.stopPropagation(); setDeleteConfirm({ id: f.id, fileName: f.fileName }); }}
-                                            className="opacity-0 group-hover:opacity-100 p-2.5 bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
+                                )
+                            })}
                             {allAttachments.length === 0 && (
                                 <p className="text-center text-base text-slate-500 py-8 italic bg-[#0b1121] rounded-2xl border border-[#1e2d4a]">ไม่มีไฟล์แนบ</p>
                             )}

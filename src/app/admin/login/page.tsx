@@ -8,6 +8,7 @@ import {
     Mail, ArrowLeft, ShieldCheck, Eye, EyeOff,
 } from "lucide-react";
 import Link from "next/link";
+import styles from "./login.module.css";
 
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -31,8 +32,18 @@ export default function AdminLoginPage() {
         if (result.success && result.user) {
             localStorage.setItem("healthhelp_user", JSON.stringify(result.user));
             const maxAge = 60 * 60 * 24 * 7;
-            document.cookie = `admin_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
-            router.push("/admin/dashboard");
+
+            const userRole = result.user.role;
+            document.cookie = "token=true; path=/; max-age=" + maxAge + "; SameSite=Lax";
+            document.cookie = "user_role=" + userRole + "; path=/; max-age=" + maxAge + "; SameSite=Lax";
+
+            if (userRole === "ADMIN" || userRole === "SUPERVISOR") {
+                router.push("/admin/dashboard");
+            } else if (userRole === "STAFF" || userRole === "VIEWER") {
+                router.push("/admin/cases");
+            } else {
+                router.push("/");
+            }
         } else {
             setError(result.error || "เกิดข้อผิดพลาด");
             setShake(true);
@@ -42,7 +53,6 @@ export default function AdminLoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center px-6 py-12 relative overflow-hidden">
-            {/* Background */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#070d1a] via-[#0b1121] to-[#0a1628]" />
             <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-blue-700 rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
             <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-indigo-700 rounded-full filter blur-[180px] opacity-10 pointer-events-none" />
@@ -56,7 +66,6 @@ export default function AdminLoginPage() {
                     กลับหน้าหลัก
                 </Link>
 
-                {/* Logo */}
                 <div className="text-center mb-10">
                     <div className="relative inline-block mb-6">
                         <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/30">
@@ -70,18 +79,13 @@ export default function AdminLoginPage() {
                     <p className="text-slate-400 text-xl mt-2">ระบบจัดการ • สำหรับเจ้าหน้าที่</p>
                 </div>
 
-                {/* Card */}
-                <div
-                    className="bg-[#111a2e]/80 backdrop-blur-2xl border border-[#1e2d4a]/80 rounded-3xl p-10 md:p-14 shadow-2xl shadow-black/40"
-                    style={shake ? { animation: "shake 0.5s ease-in-out" } : {}}
-                >
+                <div className={"bg-[#111a2e]/80 backdrop-blur-2xl border border-[#1e2d4a]/80 rounded-3xl p-10 md:p-14 shadow-2xl shadow-black/40 " + (shake ? styles.shakeAnimation : "")}>
                     <div className="mb-10">
                         <h2 className="text-3xl font-bold text-white mb-2">เข้าสู่ระบบ</h2>
                         <p className="text-slate-400 text-lg">กรุณากรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งาน</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-7">
-                        {/* Email */}
                         <div>
                             <label className="block text-lg font-semibold text-slate-300 mb-3">
                                 <Mail className="w-5 h-5 inline mr-2 text-blue-400" />
@@ -98,7 +102,6 @@ export default function AdminLoginPage() {
                             />
                         </div>
 
-                        {/* Password */}
                         <div>
                             <label className="block text-lg font-semibold text-slate-300 mb-3">
                                 <Lock className="w-5 h-5 inline mr-2 text-indigo-400" />
@@ -124,7 +127,6 @@ export default function AdminLoginPage() {
                             </div>
                         </div>
 
-                        {/* Error */}
                         {error && (
                             <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-2xl px-5 py-4">
                                 <AlertCircle className="w-6 h-6 text-red-400 shrink-0" />
@@ -132,7 +134,6 @@ export default function AdminLoginPage() {
                             </div>
                         )}
 
-                        {/* Submit */}
                         <button
                             type="submit"
                             disabled={loading}
@@ -145,7 +146,6 @@ export default function AdminLoginPage() {
                         </button>
                     </form>
 
-                    {/* Demo accounts */}
                     <div className="mt-10 pt-8 border-t border-slate-700/50">
                         <p className="text-sm text-slate-500 text-center mb-5 font-semibold uppercase tracking-widest">บัญชีทดสอบ (Demo)</p>
                         <div className="flex flex-wrap justify-center gap-3 text-sm">
@@ -153,17 +153,18 @@ export default function AdminLoginPage() {
                                 { role: "Admin", email: "admin@healthhelp.com", pass: "password123" },
                                 { role: "Supervisor", email: "supervisor@healthhelp.com", pass: "password123" },
                                 { role: "Staff", email: "staff@healthhelp.com", pass: "password123" },
+                                { role: "Viewer", email: "viewer@healthhelp.com", pass: "password123" },
                             ].map((cred) => (
                                 <button
                                     key={cred.role}
                                     type="button"
                                     onClick={() => {
-                                        const emailInput = document.querySelector<HTMLInputElement>('input[name="email"]');
-                                        const passInput = document.querySelector<HTMLInputElement>('input[name="password"]');
+                                        const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
+                                        const passInput = document.querySelector('input[name="password"]') as HTMLInputElement;
                                         if (emailInput) { emailInput.value = cred.email; emailInput.dispatchEvent(new Event("input", { bubbles: true })); }
                                         if (passInput) { passInput.value = cred.pass; passInput.dispatchEvent(new Event("input", { bubbles: true })); }
                                     }}
-                                    className="px-6 py-3 rounded-full bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700/50 text-base font-semibold"
+                                    className="px-4 py-2 md:px-6 md:py-3 rounded-full bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700/50 text-sm md:text-base font-semibold"
                                 >
                                     {cred.role}
                                 </button>
@@ -177,18 +178,6 @@ export default function AdminLoginPage() {
                     🔒 ระบบนี้สำหรับเจ้าหน้าที่เท่านั้น • HealthHelp Admin
                 </p>
             </div>
-
-            <style jsx global>{`
-                @keyframes shake {
-                    0%,100%{transform:translateX(0)}
-                    15%{transform:translateX(-8px)}
-                    30%{transform:translateX(8px)}
-                    45%{transform:translateX(-5px)}
-                    60%{transform:translateX(5px)}
-                    75%{transform:translateX(-2px)}
-                    90%{transform:translateX(2px)}
-                }
-            `}</style>
         </div>
     );
 }

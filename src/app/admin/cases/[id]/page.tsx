@@ -1,3 +1,4 @@
+import { PERMISSIONS } from "@/lib/permissions";
 import { getCaseById, getStaffUsers } from "@/app/actions/admin-actions";
 import { CaseDetailClient } from "@/components/admin/CaseDetailClient";
 import { notFound } from "next/navigation";

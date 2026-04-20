@@ -146,3 +146,19 @@ function parseCSVLine(text: string): string[] {
     const re = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
     return text.split(re).map(str => str.replace(/^"|"$/g, "").trim());
 }
+
+export async function getCategories() {
+    try {
+        // ดึงข้อมูลจากตาราง Category ใน Database ของคุณ
+        // (ตรวจสอบชื่อตารางใน schema.prisma ด้วยนะครับ ถ้าชื่ออื่นก็แก้ตรง prisma.category ได้เลย)
+        const categories = await prisma.category.findMany({
+            orderBy: {
+                name: 'asc' // เรียงตามตัวอักษร
+            }
+        });
+        return categories;
+    } catch (error) {
+        console.error("Failed to fetch categories:", error);
+        return []; // ถ้าฐานข้อมูลมีปัญหา ให้ส่ง array ว่างกลับไปก่อน หน้าเว็บจะได้ไม่พัง
+    }
+}

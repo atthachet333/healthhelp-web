@@ -1,14 +1,14 @@
 import { CreateCaseForm } from "@/components/public/CreateCaseForm";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, HeartPulse } from "lucide-react";
+// 👇 1. Import ฟังก์ชันดึง Database เข้ามา
+import { getCategories } from "@/app/actions/master-data-actions";
 
-export default function ReportPage() {
-    const mockCategories = [
-        { id: "1", name: "ปัญหาฮาร์ดแวร์ (Hardware/คอมพิวเตอร์)" },
-        { id: "2", name: "ปัญหาระบบเครือข่าย (Network/Internet)" },
-        { id: "3", name: "ปัญหาซอฟต์แวร์ (Software/โปรแกรม)" },
-        { id: "4", name: "ภัยคุกคามทางไซเบอร์ (Hacking/ไวรัส)" },
-    ];
+// 👇 2. เปลี่ยนเป็น async function เพื่อรอข้อมูลจาก Database
+export default async function ReportPage() {
+
+    // 👇 3. ดึงข้อมูลประเภทปัญหาจาก Database จริงๆ
+    const categories = await getCategories();
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f8fafc] w-full">
@@ -35,10 +35,7 @@ export default function ReportPage() {
                 </div>
             </header>
 
-            {/* 👇 เพิ่ม padding ด้านซ้ายขวา (px-6 lg:px-12) เพื่อไม่ให้ชิดขอบจอเกินไป */}
             <main className="flex-grow w-full flex flex-col items-center pt-12 px-6 lg:px-12 pb-0">
-
-                {/* 👇 ขยายความกว้างสูงสุดเป็น 6XL ให้ฟอร์มดูกว้างสบายตา */}
                 <div className="w-full max-w-6xl flex flex-col h-full flex-grow">
                     <div className="mb-12 text-center w-full shrink-0">
                         <div className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-full bg-emerald-50 text-emerald-600 font-bold text-base mb-6 border border-emerald-100">
@@ -49,10 +46,10 @@ export default function ReportPage() {
                     </div>
 
                     <div className="bg-white rounded-t-[3.5rem] shadow-2xl p-8 sm:p-16 border border-slate-200 border-b-0 w-full mx-auto flex-grow flex flex-col">
-                        <CreateCaseForm categories={mockCategories} />
+                        {/* 👇 4. โยน Categories ที่ได้จากฐานข้อมูลจริง เข้าไปใน Form เลย! */}
+                        <CreateCaseForm categories={categories} />
                     </div>
                 </div>
-
             </main>
         </div>
     );
