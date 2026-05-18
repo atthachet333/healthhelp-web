@@ -12,7 +12,6 @@ import {
 import { getStatusLabel, getStatusColor, getPriorityLabel, getPriorityColor, formatDateTime } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 
-// อัปเกรด: เพิ่มปุ่ม Download ในหน้าต่าง Preview รูปภาพ
 function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200" onClick={onClose}>
@@ -136,7 +135,6 @@ export default function TrackPage() {
                 </div>
             </header>
 
-            {/* อัปเกรด: ตัด padding-bottom ทิ้ง เพื่อให้ขอบแชทชนขอบล่างจอ */}
             <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 pt-8 pb-0 flex flex-col items-center">
                 {lightboxSrc && <ImageLightbox src={lightboxSrc} alt="รูปขยาย" onClose={() => setLightboxSrc(null)} />}
                 {!caseData && (
@@ -241,7 +239,7 @@ export default function TrackPage() {
                                 </div>
                             </div>
 
-                            {/* ════ CENTER: Chat Area (ขยายกว้างและแนบติดขอบล่าง) ════ */}
+                            {/* ════ CENTER: Chat Area ════ */}
                             <div className="flex-1 w-full bg-white rounded-t-[2.5rem] xl:rounded-t-[2.5rem] xl:rounded-b-none shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] border-x border-t border-slate-200 overflow-hidden flex flex-col h-full z-20">
                                 <div className="bg-slate-900 px-8 py-4 shrink-0 flex items-center gap-4 shadow-md z-10">
                                     <MessageCircle className="w-6 h-6 text-indigo-400" /><h3 className="text-lg font-black text-white tracking-wide">การสนทนากับเจ้าหน้าที่</h3>
@@ -263,19 +261,24 @@ export default function TrackPage() {
                                                                 <div className="mt-4 flex flex-col gap-3 items-end">
                                                                     {u.attachments.map((file: any, idx: number) => {
                                                                         const safeUrl = `/api/view-file?url=${encodeURIComponent(file.fileUrl)}`;
-                                                                        const downloadUrl = `/api/view-file?url=${encodeURIComponent(file.fileUrl)}&dl=true`;
+
                                                                         return (
                                                                             <div key={idx}>
-                                                                                {file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                                                                    <div className="relative group/img inline-block">
-                                                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                                        <img src={safeUrl} alt={file.fileName} className="max-w-[300px] max-h-[300px] object-cover rounded-2xl cursor-zoom-in border-4 border-indigo-400/30 hover:border-indigo-300 transition-colors" onClick={() => setLightboxSrc(safeUrl)} />
-                                                                                        <a href={downloadUrl} className="absolute top-3 right-3 w-10 h-10 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all backdrop-blur-sm shadow-md" title="ดาวน์โหลดรูปภาพ">
-                                                                                            <Download className="w-5 h-5" />
-                                                                                        </a>
-                                                                                    </div>
+                                                                                {/* เปลี่ยนมาเช็กจาก fileName แทน fileUrl เพื่อแก้ปัญหา URL แปลกๆ */}
+                                                                                {file.fileName.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setLightboxSrc(safeUrl)}
+                                                                                        className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-indigo-700 bg-white/90 hover:bg-white rounded-xl transition-colors shadow-sm focus:outline-none"
+                                                                                        title="คลิกเพื่อดูรูปภาพขยาย"
+                                                                                    >
+                                                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                                        </svg>
+                                                                                        ดูรูปภาพแนบ
+                                                                                    </button>
                                                                                 ) : (
-                                                                                    // 💡 แก้ไขตรงนี้: เปลี่ยนมาใช้ safeUrl และ target="_blank" เพื่อให้เบราว์เซอร์เปิดพรีวิว PDF
                                                                                     <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm font-bold bg-indigo-800 text-white px-5 py-3 rounded-2xl hover:bg-indigo-900 transition-colors shadow-sm" title="เปิดพรีวิวไฟล์">
                                                                                         <FileText className="w-5 h-5 shrink-0" />
                                                                                         <span className="truncate max-w-[200px]">{file.fileName}</span>
@@ -305,19 +308,24 @@ export default function TrackPage() {
                                                             <div className="mt-4 flex flex-col gap-3">
                                                                 {u.attachments.map((file: any, idx: number) => {
                                                                     const safeUrl = `/api/view-file?url=${encodeURIComponent(file.fileUrl)}`;
-                                                                    const downloadUrl = `/api/view-file?url=${encodeURIComponent(file.fileUrl)}&dl=true`;
+
                                                                     return (
                                                                         <div key={idx}>
-                                                                            {file.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                                                                                <div className="relative group/img inline-block">
-                                                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                                    <img src={safeUrl} alt={file.fileName} className="max-w-[300px] max-h-[300px] object-cover rounded-2xl cursor-zoom-in border-4 border-slate-100 hover:border-slate-300 transition-colors" onClick={() => setLightboxSrc(safeUrl)} />
-                                                                                    <a href={downloadUrl} className="absolute top-3 right-3 w-10 h-10 bg-black/50 hover:bg-black/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-all backdrop-blur-sm shadow-md" title="ดาวน์โหลดรูปภาพ">
-                                                                                        <Download className="w-5 h-5" />
-                                                                                    </a>
-                                                                                </div>
+                                                                            {/* เปลี่ยนมาเช็กจาก fileName เช่นกัน */}
+                                                                            {file.fileName.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => setLightboxSrc(safeUrl)}
+                                                                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-indigo-500 hover:bg-indigo-600 rounded-xl transition-colors shadow-sm focus:outline-none"
+                                                                                    title="คลิกเพื่อดูรูปภาพขยาย"
+                                                                                >
+                                                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                                    </svg>
+                                                                                    ดูรูปภาพแนบ
+                                                                                </button>
                                                                             ) : (
-                                                                                // 💡 แก้ไขตรงนี้: เปลี่ยนมาใช้ safeUrl และ target="_blank" เพื่อเปิดพรีวิว PDF
                                                                                 <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm font-bold bg-slate-50 text-indigo-700 px-5 py-3 rounded-2xl border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm" title="เปิดพรีวิวไฟล์">
                                                                                     <FileText className="w-5 h-5 shrink-0 text-indigo-500" />
                                                                                     <span className="truncate max-w-[200px]">{file.fileName}</span>
